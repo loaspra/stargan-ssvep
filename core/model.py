@@ -50,10 +50,7 @@ class ResBlk(nn.Module):
     def _build_weights(self, dim_in, dim_out):
         self.conv1 = nn.Conv1d(dim_in, dim_in, 3, 1, 1)
         self.conv2 = nn.Conv1d(dim_in, dim_out, 3, 1, 1)
-        # if self.normalize: 
-        #     self.norm1 = nn.InstanceNorm2d(dim_in, affine=True)
-        #     self.norm2 = nn.InstanceNorm2d(dim_in, affine=True)
-        # Modify the above lines to work with EEG 1D signals instead of images  
+        
         if self.normalize:
             self.norm1 = nn.InstanceNorm1d(dim_in, affine=True)
             self.norm2 = nn.InstanceNorm1d(dim_in, affine=True)
@@ -103,7 +100,7 @@ class ResBlk(nn.Module):
             x = self.norm2(x)
         x = self.actv(x)
         x = self.conv2(x)
-        x = x * self.cbam(x)
+        # x = x * self.cbam(x)
         return x
 
     def forward(self, x):
@@ -215,18 +212,16 @@ class HighPass(nn.Module):
 class Generator(nn.Module):
     def __init__(self, img_size=256, style_dim=8, max_conv_dim=512, w_hpf=1):
         super().__init__()
-        dim_in = 3
+        dim_in = 2
         self.img_size = img_size
-        self.from_rgb = nn.Conv1d(3, dim_in, 3, 1, 1)
+        self.from_rgb = nn.Conv1d(dim_in, dim_in, 3, 1, 1) # not used
         self.encode = nn.ModuleList()
         self.decode = nn.ModuleList()
         self.to_rgb = nn.Sequential(
             nn.InstanceNorm1d(dim_in, affine=True),
             nn.LeakyReLU(0.2),
-            nn.Conv1d(dim_in, 3, 1, 1, 0))
-        # Question: As we are working with EEG signals (with 3 channels), is it necessary to use the to_rgb function?
-        # Answer: No, it is not necessary. We can just use the output of the last layer of the decoder.
-
+            nn.Conv1d(dim_in, 2, 1, 1, 0))
+        
         # down/up-sampling blocks
         repeat_num = int(np.log2(img_size)) - 4
         if w_hpf > 0:
@@ -320,7 +315,7 @@ class StyleEncoder(nn.Module):
         
         dim_in = 2**14 // img_size # why 2**14?
         blocks = []
-        blocks += [nn.Conv1d(3, dim_in, 3, 1, 1)]
+        blocks += [nn.Conv1d(2, dim_in, 3, 1, 1)]
 
         repeat_num = int(np.log2(img_size)) - 2
         for _ in range(repeat_num):
@@ -363,7 +358,7 @@ class Discriminator(nn.Module):
         super().__init__()
         dim_in = 2**14 // img_size
         blocks = []
-        blocks += [nn.Conv1d(3, dim_in, 3, 1, 1)]
+        blocks += [nn.Conv1d(2, dim_in, 3, 1, 1)]
 
         repeat_num = int(np.log2(img_size)) - 2
         for _ in range(repeat_num):

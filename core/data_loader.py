@@ -56,7 +56,7 @@ class DefaultDataset(data.Dataset):
         if self.transform is not None:
             img = self.transform(img)
         
-        img = img.reshape((3, 256))
+        img = img.reshape((2, 1000))
         
         return img, self.targets[index]
         
@@ -98,8 +98,8 @@ class ReferenceDataset(data.Dataset):
             img = self.transform(img)
             img2 = self.transform(img2)
 
-        img = img.reshape((3, 256))
-        img2 = img2.reshape((3, 256))
+        img = img.reshape((2, 1000))
+        img2 = img2.reshape((2, 1000))
 
         return img, img2, label
 
@@ -114,7 +114,7 @@ def _make_balanced_sampler(labels):
     return WeightedRandomSampler(weights, len(weights))
 
 
-def get_train_loader(root, which='source', img_size=256,
+def get_train_loader(root, which='source', img_size=1000,
                      batch_size=8, prob=0.5, num_workers=4):
     print('Preparing DataLoader to fetch %s images '
           'during the training phase...' % which)
@@ -151,7 +151,7 @@ def get_train_loader(root, which='source', img_size=256,
                            drop_last=True)
 
 
-def get_eval_loader(root, img_size=256, batch_size=32,
+def get_eval_loader(root, img_size=1000, batch_size=32,
                     imagenet_normalize=False, shuffle=True,
                     num_workers=4, drop_last=False):
     print('Preparing DataLoader for the evaluation phase...')
@@ -181,7 +181,7 @@ def get_eval_loader(root, img_size=256, batch_size=32,
                            drop_last=drop_last)
 
 
-def get_test_loader(root, img_size=256, batch_size=32,
+def get_test_loader(root, img_size=1000, batch_size=32,
                     shuffle=True, num_workers=4):
     print('Preparing DataLoader for the generation phase...')
     transform = transforms.Compose([
