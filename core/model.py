@@ -75,23 +75,9 @@ class ResBlk(nn.Module):
             x = F.avg_pool1d(x, 2)
         return x
 
-    # def _residual(self, x):
-    #     if self.normalize: 
-    #         x = self.norm1(x)                     
-    #     x = self.actv(x)
-    #     x = self.conv1(x)
-    #     if self.downsample:
-    #         x = F.avg_pool1d(x, 2)
-    #     if self.normalize:
-    #         x = self.norm2(x)
-    #     x = self.actv(x)
-    #     x = self.conv2(x)
-    #     return x
-
-    # With CBAM
     def _residual(self, x):
-        if self.normalize:
-            x = self.norm1(x)
+        if self.normalize: 
+            x = self.norm1(x)                     
         x = self.actv(x)
         x = self.conv1(x)
         if self.downsample:
@@ -100,8 +86,22 @@ class ResBlk(nn.Module):
             x = self.norm2(x)
         x = self.actv(x)
         x = self.conv2(x)
-        # x = x * self.cbam(x)
         return x
+
+    # With CBAM
+    # def _residual(self, x):
+    #     if self.normalize:
+    #         x = self.norm1(x)
+    #     x = self.actv(x)
+    #     x = self.conv1(x)
+    #     if self.downsample:
+    #         x = F.avg_pool1d(x, 2)
+    #     if self.normalize:
+    #         x = self.norm2(x)
+    #     x = self.actv(x)
+    #     x = self.conv2(x)
+    #     x = x * self.cbam(x)
+    #     return x
 
     def forward(self, x):
         x = self._shortcut(x) + self._residual(x)
@@ -154,7 +154,7 @@ The flow is described on the 'forward' function. It sums the output of the short
 However, the output is divided by the square root of 2 in this case.
 """
 class AdainResBlk(nn.Module):
-    def __init__(self, dim_in, dim_out, style_dim=8, w_hpf=0,
+    def __init__(self, dim_in, dim_out, style_dim=64, w_hpf=0,
                  actv=nn.LeakyReLU(0.2), upsample=False):
         super().__init__()
         self.w_hpf = w_hpf
@@ -210,9 +210,9 @@ class HighPass(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self, img_size=256, style_dim=8, max_conv_dim=512, w_hpf=1):
+    def __init__(self, img_size=256, style_dim=64, max_conv_dim=512, w_hpf=1):
         super().__init__()
-        dim_in = 2
+        dim_in = 2 ** 14 // img_size
         self.img_size = img_size
         self.from_rgb = nn.Conv1d(dim_in, dim_in, 3, 1, 1) # not used
         self.encode = nn.ModuleList()
@@ -227,7 +227,7 @@ class Generator(nn.Module):
         if w_hpf > 0:
             repeat_num += 1
         for _ in range(repeat_num):
-            dim_out = min(dim_in, max_conv_dim)
+            dim_out = min(dim_in*2, max_conv_dim)
             self.encode.append(
                 ResBlk(dim_in, dim_out, normalize=True, downsample=True))
             self.decode.insert(
@@ -248,7 +248,7 @@ class Generator(nn.Module):
             self.hpf = HighPass(w_hpf, device)
 
     def forward(self, x, s, masks=None):
-        # x = self.from_rgb(x)
+        x = self.from_rgb(x)
         cache = {}
         for block in self.encode:
             if (masks is not None) and (x.size(2) in [32, 64, 128]):
@@ -310,7 +310,7 @@ class MappingNetwork(nn.Module):
 
 
 class StyleEncoder(nn.Module):
-    def __init__(self, img_size=256, style_dim=8, num_domains=2, max_conv_dim=512):
+    def __init__(self, img_size=256, style_dim=64, num_domains=2, max_conv_dim=512):
         super().__init__()
         
         dim_in = 2**14 // img_size # why 2**14?
@@ -340,11 +340,13 @@ class StyleEncoder(nn.Module):
     
 
     def forward(self, x, y):
+        print(x.shape)
         h = self.shared(x)
         h = h.view(h.size(0), -1)
         # output shape: (batch, dim_out) (8, 764928)
         out = []
         for layer in self.unshared:
+            print(h.shape)
             out += [layer(h)]
 
         out = torch.stack(out, dim=1)  # (batch, num_domains, style_dim)
@@ -367,7 +369,7 @@ class Discriminator(nn.Module):
             dim_in = dim_out
 
         blocks += [nn.LeakyReLU(0.2)]
-        blocks += [nn.Conv1d(dim_out, dim_out, 2, 1, 0)]
+        blocks += [nn.Conv1d(dim_out, dim_out, 4, 1, 0)]
         blocks += [nn.LeakyReLU(0.2)]
         blocks += [nn.Conv1d(dim_out, num_domains, 1, 1, 0)]
         self.main = nn.Sequential(*blocks)
