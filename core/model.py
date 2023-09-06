@@ -163,7 +163,7 @@ class AdainResBlk(nn.Module):
         self.learned_sc = dim_in != dim_out
         self._build_weights(dim_in, dim_out, style_dim)
 
-    def _build_weights(self, dim_in, dim_out, style_dim=8):
+    def _build_weights(self, dim_in, dim_out, style_dim=64):
         self.conv1 = nn.Conv1d(dim_in, dim_out, 3, 1, 1)
         self.conv2 = nn.Conv1d(dim_out, dim_out, 3, 1, 1)
         self.norm1 = AdaIN(style_dim, dim_in)
@@ -214,13 +214,13 @@ class Generator(nn.Module):
         super().__init__()
         dim_in = 2 ** 14 // img_size
         self.img_size = img_size
-        self.from_rgb = nn.Conv1d(dim_in, dim_in, 3, 1, 1) # not used
+        self.from_rgb = nn.Conv1d(2, dim_in, 3, 1, 1) # not used
         self.encode = nn.ModuleList()
         self.decode = nn.ModuleList()
         self.to_rgb = nn.Sequential(
-            nn.InstanceNorm1d(dim_in, affine=True),
+            nn.InstanceNorm1d(64, affine=True),
             nn.LeakyReLU(0.2),
-            nn.Conv1d(dim_in, 2, 1, 1, 0))
+            nn.Conv1d(64, 2, 1, 1, 0))
         
         # down/up-sampling blocks
         repeat_num = int(np.log2(img_size)) - 4
@@ -261,7 +261,8 @@ class Generator(nn.Module):
                 mask = masks[0] if x.size(2) in [32] else masks[1]
                 mask = F.interpolate(mask, size=x.size(2), mode='bilinear')
                 x = x + self.hpf(mask * cache[x.size(2)])
-        
+
+        print(f"before to_rgb: {x.shape}")        
         x = self.to_rgb(x)
         return x 
         # As shown above, the output of the generator is a tensor of size torch.Size([8, 3, 240]).
@@ -278,7 +279,7 @@ class Generator(nn.Module):
 
 
 class MappingNetwork(nn.Module):
-    def __init__(self, latent_dim=16, style_dim=8, num_domains=2):
+    def __init__(self, latent_dim=16, style_dim=64, num_domains=2):
         super().__init__()
         layers = []
         layers += [nn.Linear(latent_dim, 512)]
@@ -342,11 +343,14 @@ class StyleEncoder(nn.Module):
     def forward(self, x, y):
         print(x.shape)
         h = self.shared(x)
+        print(f"after shared: {h.shape}")
         h = h.view(h.size(0), -1)
         # output shape: (batch, dim_out) (8, 764928)
         out = []
         for layer in self.unshared:
             print(h.shape)
+            # print the layer shape
+            print(layer)
             out += [layer(h)]
 
         out = torch.stack(out, dim=1)  # (batch, num_domains, style_dim)

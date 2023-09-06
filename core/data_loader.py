@@ -54,7 +54,10 @@ class DefaultDataset(data.Dataset):
         
         img = img.astype(np.float32)
         if self.transform is not None:
+            print(f"Applying the following transformation: {self.transform}")
+            print(f"Image before transform: {img.shape}")
             img = self.transform(img)
+            print(f"Image after transform: {img.shape}")
         
         img = img.reshape((2, 1000))
         
@@ -113,21 +116,22 @@ def _make_balanced_sampler(labels):
     weights = class_weights[labels]
     return WeightedRandomSampler(weights, len(weights))
 
+def resize_signal(x):
+        # add padding to the signal, so the final shape is a power of 2
+        print(f"before_resize: {x.shape}")
+        x = np.pad(x, ((0, (2**int(np.ceil(np.log2(x.shape[0]))) - x.shape[0])), (0 , 0)), 'constant')
+        print(f"after_resize: {x.shape}")
+        return x
 
 def get_train_loader(root, which='source', img_size=1000,
                      batch_size=8, prob=0.5, num_workers=4):
     print('Preparing DataLoader to fetch %s images '
           'during the training phase...' % which)
 
-    # crop = transforms.RandomResizedCrop(
-    #     img_size, scale=[0.8, 1.0], ratio=[0.9, 1.1])
-    # rand_crop = transforms.Lambda(
-    #     lambda x: crop(x) if random.random() < prob else x)
 
     transform = transforms.Compose([
-        # rand_crop,
-        # transforms.Resize([img_size, img_size]),
-        # transforms.RandomHorizontalFlip(),
+        resize_signal,
+
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.5],
                              std=[0.5]),
@@ -157,17 +161,17 @@ def get_eval_loader(root, img_size=1000, batch_size=32,
     print('Preparing DataLoader for the evaluation phase...')
     imagenet_normalize = False # change
     if imagenet_normalize:
-        height, width = 299, 299
+        img_size = 299
         mean = [0.485, 0.456, 0.406]
         std = [0.229, 0.224, 0.225]
     else:
-        height, width = img_size, img_size
         mean = [0.5, 0.5, 0.5]
         std = [0.5, 0.5, 0.5]
 
+
     transform = transforms.Compose([
-        # transforms.Resize([img_size, img_size]),
-        # transforms.Resize([height, width]),
+        resize_signal,
+
         transforms.ToTensor(),
         transforms.Normalize(mean=mean, std=std)
     ])
@@ -181,11 +185,13 @@ def get_eval_loader(root, img_size=1000, batch_size=32,
                            drop_last=drop_last)
 
 
-def get_test_loader(root, img_size=1000, batch_size=32,
+def get_test_loader(root, img_size=256, batch_size=32,
                     shuffle=True, num_workers=4):
     print('Preparing DataLoader for the generation phase...')
+
+
     transform = transforms.Compose([
-        # transforms.Resize([img_size, img_size]),
+        resize_signal,
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.5],
                              std=[0.5]),
