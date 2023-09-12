@@ -214,13 +214,13 @@ class Generator(nn.Module):
         super().__init__()
         dim_in = 2 ** 14 // img_size
         self.img_size = img_size
-        self.from_rgb = nn.Conv1d(2, dim_in, 3, 1, 1) # not used
+        self.from_rgb = nn.Conv1d(3, dim_in, 3, 1, 1) # not used
         self.encode = nn.ModuleList()
         self.decode = nn.ModuleList()
         self.to_rgb = nn.Sequential(
-            nn.InstanceNorm1d(64, affine=True),
+            nn.InstanceNorm1d(16, affine=True),
             nn.LeakyReLU(0.2),
-            nn.Conv1d(64, 2, 1, 1, 0))
+            nn.Conv1d(16, 3, 1, 1, 0))
         
         # down/up-sampling blocks
         repeat_num = int(np.log2(img_size)) - 4
@@ -262,7 +262,6 @@ class Generator(nn.Module):
                 mask = F.interpolate(mask, size=x.size(2), mode='bilinear')
                 x = x + self.hpf(mask * cache[x.size(2)])
 
-        print(f"before to_rgb: {x.shape}")        
         x = self.to_rgb(x)
         return x 
         # As shown above, the output of the generator is a tensor of size torch.Size([8, 3, 240]).
@@ -316,7 +315,7 @@ class StyleEncoder(nn.Module):
         
         dim_in = 2**14 // img_size # why 2**14?
         blocks = []
-        blocks += [nn.Conv1d(2, dim_in, 3, 1, 1)]
+        blocks += [nn.Conv1d(3, dim_in, 3, 1, 1)]
 
         repeat_num = int(np.log2(img_size)) - 2
         for _ in range(repeat_num):
@@ -341,16 +340,11 @@ class StyleEncoder(nn.Module):
     
 
     def forward(self, x, y):
-        print(x.shape)
         h = self.shared(x)
-        print(f"after shared: {h.shape}")
         h = h.view(h.size(0), -1)
         # output shape: (batch, dim_out) (8, 764928)
         out = []
         for layer in self.unshared:
-            print(h.shape)
-            # print the layer shape
-            print(layer)
             out += [layer(h)]
 
         out = torch.stack(out, dim=1)  # (batch, num_domains, style_dim)
@@ -364,7 +358,7 @@ class Discriminator(nn.Module):
         super().__init__()
         dim_in = 2**14 // img_size
         blocks = []
-        blocks += [nn.Conv1d(2, dim_in, 3, 1, 1)]
+        blocks += [nn.Conv1d(3, dim_in, 3, 1, 1)]
 
         repeat_num = int(np.log2(img_size)) - 2
         for _ in range(repeat_num):

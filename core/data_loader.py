@@ -25,8 +25,6 @@ from torchvision.datasets import ImageFolder
 
 # Modifying the data loader to work with our dataset (EEG time domain data)
 def listdir(dname):
-    # fnames = list(chain(*[list(Path(dname).rglob('*.' + ext))
-    #                       for ext in ['png', 'jpg', 'jpeg', 'JPG']]))
     
     fnames = list(chain(*[list(Path(dname).rglob('*.' + ext))
                             for ext in ['npy', 'csv']]))
@@ -54,12 +52,9 @@ class DefaultDataset(data.Dataset):
         
         img = img.astype(np.float32)
         if self.transform is not None:
-            print(f"Applying the following transformation: {self.transform}")
-            print(f"Image before transform: {img.shape}")
             img = self.transform(img)
-            print(f"Image after transform: {img.shape}")
         
-        img = img.reshape((2, 1000))
+        img = img.reshape((3, 1024))
         
         return img, self.targets[index]
         
@@ -101,8 +96,8 @@ class ReferenceDataset(data.Dataset):
             img = self.transform(img)
             img2 = self.transform(img2)
 
-        img = img.reshape((2, 1000))
-        img2 = img2.reshape((2, 1000))
+        img = img.reshape((3, 1024))
+        img2 = img2.reshape((3, 1024))
 
         return img, img2, label
 
@@ -118,9 +113,7 @@ def _make_balanced_sampler(labels):
 
 def resize_signal(x):
         # add padding to the signal, so the final shape is a power of 2
-        print(f"before_resize: {x.shape}")
         x = np.pad(x, ((0, (2**int(np.ceil(np.log2(x.shape[0]))) - x.shape[0])), (0 , 0)), 'constant')
-        print(f"after_resize: {x.shape}")
         return x
 
 def get_train_loader(root, which='source', img_size=1000,
