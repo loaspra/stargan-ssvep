@@ -75,23 +75,9 @@ class ResBlk(nn.Module):
             x = F.avg_pool1d(x, 2)
         return x
 
-    def _residual(self, x):
-        if self.normalize: 
-            x = self.norm1(x)                     
-        x = self.actv(x)
-        x = self.conv1(x)
-        if self.downsample:
-            x = F.avg_pool1d(x, 2)
-        if self.normalize:
-            x = self.norm2(x)
-        x = self.actv(x)
-        x = self.conv2(x)
-        return x
-
-    # With CBAM
     # def _residual(self, x):
-    #     if self.normalize:
-    #         x = self.norm1(x)
+    #     if self.normalize: 
+    #         x = self.norm1(x)                     
     #     x = self.actv(x)
     #     x = self.conv1(x)
     #     if self.downsample:
@@ -100,8 +86,22 @@ class ResBlk(nn.Module):
     #         x = self.norm2(x)
     #     x = self.actv(x)
     #     x = self.conv2(x)
-    #     x = x * self.cbam(x)
     #     return x
+
+    # With CBAM
+    def _residual(self, x):
+        if self.normalize:
+            x = self.norm1(x)
+        x = self.actv(x)
+        x = self.conv1(x)
+        if self.downsample:
+            x = F.avg_pool1d(x, 2)
+        if self.normalize:
+            x = self.norm2(x)
+        x = self.actv(x)
+        x = self.conv2(x)
+        x = x * self.cbam(x)
+        return x
 
     def forward(self, x):
         x = self._shortcut(x) + self._residual(x)
