@@ -112,7 +112,7 @@ if __name__ == '__main__':
     # training arguments
     parser.add_argument('--randcrop_prob', type=float, default=0.5,
                         help='Probabilty of using random-resized cropping')
-    parser.add_argument('--total_iters', type=int, default=10000,
+    parser.add_argument('--total_iters', type=int, default=50000,
                         help='Number of total iterations')
     parser.add_argument('--resume_iter', type=int, default=0,
                         help='Iterations to resume training/testing')
@@ -174,9 +174,9 @@ if __name__ == '__main__':
 
     # step size
     parser.add_argument('--print_every', type=int, default=10)
-    parser.add_argument('--sample_every', type=int, default=2000)
-    parser.add_argument('--save_every', type=int, default=500)
-    parser.add_argument('--eval_every', type=int, default=5000)
+    parser.add_argument('--sample_every', type=int, default=5000)
+    parser.add_argument('--save_every', type=int, default=1000)
+    parser.add_argument('--eval_every', type=int, default=100000)
 
     args = parser.parse_args()
     main(args)

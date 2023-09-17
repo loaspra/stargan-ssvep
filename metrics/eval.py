@@ -60,6 +60,7 @@ def calculate_metrics(nets, args, step, mode):
             lpips_values = []
             print('Generating images and calculating LPIPS for %s...' % task)
             for i, x_src in enumerate(tqdm(loader_src, total=len(loader_src))):
+                x_src = x_src[0]
                 N = x_src.size(0)
                 x_src = x_src.to(device)
                 y_trg = torch.tensor([trg_idx] * N).to(device)
@@ -81,7 +82,7 @@ def calculate_metrics(nets, args, step, mode):
                         if x_ref.size(0) > N:
                             x_ref = x_ref[:N]
                         s_trg = nets.style_encoder(x_ref, y_trg)
-
+                    
                     x_fake = nets.generator(x_src, s_trg, masks=masks)
                     group_of_images.append(x_fake)
 

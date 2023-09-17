@@ -23,7 +23,7 @@ class AlexNet(nn.Module):
         self.layers = models.alexnet(pretrained=True).features
         self.channels = []
         for layer in self.layers:
-            if isinstance(layer, nn.Conv2d):
+            if isinstance(layer, nn.Conv1d):
                 self.channels.append(layer.out_channels)
 
     def forward(self, x):
@@ -40,7 +40,7 @@ class Conv1x1(nn.Module):
         super().__init__()
         self.main = nn.Sequential(
             nn.Dropout(0.5),
-            nn.Conv2d(in_channels, out_channels, 1, 1, 0, bias=False))
+            nn.Conv1d(in_channels, out_channels, 1, 1, 0, bias=False))
 
     def forward(self, x):
         return self.main(x)
@@ -55,8 +55,8 @@ class LPIPS(nn.Module):
             self.lpips_weights.append(Conv1x1(channels, 1))
         self._load_lpips_weights()
         # imagenet normalization for range [-1, 1]
-        self.mu = torch.tensor([-0.03, -0.088, -0.188]).view(1, 3, 1, 1).cuda()
-        self.sigma = torch.tensor([0.458, 0.448, 0.450]).view(1, 3, 1, 1).cuda()
+        self.mu = torch.tensor([-0.03, -0.088, -0.188]).view(1, 3, 1).cuda()
+        self.sigma = torch.tensor([0.458, 0.448, 0.450]).view(1, 3, 1).cuda()
 
     def _load_lpips_weights(self):
         own_state_dict = self.state_dict()
@@ -70,6 +70,7 @@ class LPIPS(nn.Module):
                 own_state_dict[name].copy_(param)
 
     def forward(self, x, y):
+        print(x.shape, y.shape)
         x = (x - self.mu) / self.sigma
         y = (y - self.mu) / self.sigma
         x_fmaps = self.alexnet(x)

@@ -152,14 +152,16 @@ def get_eval_loader(root, img_size=1000, batch_size=32,
                     imagenet_normalize=False, shuffle=True,
                     num_workers=4, drop_last=False):
     print('Preparing DataLoader for the evaluation phase...')
+
     imagenet_normalize = False # change
+    
     if imagenet_normalize:
-        img_size = 299
-        mean = [0.485, 0.456, 0.406]
-        std = [0.229, 0.224, 0.225]
+        img_size = 512
+        mean = [0.485]
+        std = [0.229]
     else:
-        mean = [0.5, 0.5, 0.5]
-        std = [0.5, 0.5, 0.5]
+        mean = [0.5]
+        std = [0.5]
 
 
     transform = transforms.Compose([
