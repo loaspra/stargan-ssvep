@@ -184,7 +184,7 @@ class Solver(nn.Module):
 
         print('Working on latent-guided image synthesis...')
 
-        fname = ospj(args.result_dir, 'reference.jpg')
+        fname = ospj(args.result_dir, 'reference')
         print('Working on {}...'.format(fname))
         utils.translate_using_reference(nets_ema, args, src.x, ref.x, ref.y, fname)
 

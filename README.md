@@ -127,10 +127,10 @@ To train StarGAN v2 from scratch, run the following commands. Generated images a
 
 ```bash
 # Signal to Signal translation
-python main.py --mode train --num_domains 2 --w_hpf 0 \
-               --lambda_reg 1 --lambda_sty 1 --lambda_ds 1 --lambda_cyc 1 \
-               --train_img_dir data/train \
-               --val_img_dir data/val
+python main.py --mode train --num_domains 3 --w_hpf 0 \
+               --lambda_reg 1 --lambda_sty 1 --lambda_ds 1 --lambda_cyc 1 \ 
+               --train_img_dir data/train --val_img_dir data/val 
+               --img_size 1024
 
 # afhq
 python main.py --mode train --num_domains 3 --w_hpf 0 \

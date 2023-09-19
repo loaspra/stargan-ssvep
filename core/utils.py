@@ -59,16 +59,12 @@ def denormalize(x):
 
 
 def save_image(x, ncol, filename):
-    # print a sample of x
-    # print(x[0][0].cpu())
-    # x = denormalize(x)
-    # print("final shape: ", x.shape) # Shape: (torch.Size([231, 3, 256])), remember that this are not images, they are EEG signals of 3 channels and 256 samples
-    # Thus, we have 231 samples, each one with 3 channels and 256 samples
-    # We want to save the images of the 3 channels of each sample, were each image contains the 3 channels of the sample    
-    # To save it: vutils.save_image(x.cpu(), filename, nrow=ncol, padding=0)
-    # print(x[0][0].cpu())
+
     
     for i in range(x.shape[0]):
+        # save the signal as a .npy
+        np.save(filename, x.cpu())
+    
         # print(x[i][0].cpu()) <- plot it
         plt.plot(x[i][0].cpu())
         plt.savefig(filename + str(i) + '.png')
@@ -126,6 +122,7 @@ def translate_using_reference(nets, args, x_src, x_ref, y_ref, filename):
     x_src_with_wb = torch.cat([wb, x_src], dim=0)
 
     masks = nets.fan.get_heatmap(x_src) if args.w_hpf > 0 else None
+    y_ref = y_ref + 1
     s_ref = nets.style_encoder(x_ref, y_ref)
 
     # make_dot(nets.style_encoder(x_ref, y_ref)).render("style_encoder", format="png")
@@ -139,10 +136,10 @@ def translate_using_reference(nets, args, x_src, x_ref, y_ref, filename):
 
     x_concat = [x_src_with_wb]
     for i, s_ref in enumerate(s_ref_list):
+        
         x_fake = nets.generator(x_src, s_ref, masks=masks)
         x_fake_with_ref = torch.cat([x_ref[i:i+1], x_fake], dim=0)
-        # print("Sample of x_fake_with_ref: ", x_fake_with_ref[0][0])
-        save_image(x_fake_with_ref, N+1, filename + '_%02d.jpg' % i)
+        save_image(x_fake, N+1, filename + '_%02d' % i)
 
     del x_concat
 
