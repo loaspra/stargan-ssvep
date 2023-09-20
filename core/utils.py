@@ -122,17 +122,12 @@ def translate_using_reference(nets, args, x_src, x_ref, y_ref, filename):
     x_src_with_wb = torch.cat([wb, x_src], dim=0)
 
     masks = nets.fan.get_heatmap(x_src) if args.w_hpf > 0 else None
-    y_ref = y_ref + 1
+    # y_ref = y_ref
     s_ref = nets.style_encoder(x_ref, y_ref)
 
-    # make_dot(nets.style_encoder(x_ref, y_ref)).render("style_encoder", format="png")
-    print("Done")
-    
-    # print(f"shape of s_ref: {s_ref.shape}")
+    make_dot(nets.style_encoder(x_ref, y_ref)).render("style_encoder", format="png")
     
     s_ref_list = s_ref.unsqueeze(1).repeat(1, N, 1)
-
-    # print(f"shape of s_ref_list: {s_ref_list.shape}")
 
     x_concat = [x_src_with_wb]
     for i, s_ref in enumerate(s_ref_list):

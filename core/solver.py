@@ -182,11 +182,23 @@ class Solver(nn.Module):
         src = next(InputFetcher(loaders.src, None, args.latent_dim, 'test'))
         ref = next(InputFetcher(loaders.ref, None, args.latent_dim, 'test'))
 
-        print('Working on latent-guided image synthesis...')
+        N = src.x.size(0)
 
-        fname = ospj(args.result_dir, 'reference')
-        print('Working on {}...'.format(fname))
-        utils.translate_using_reference(nets_ema, args, src.x, ref.x, ref.y, fname)
+        device = src.x.device
+
+        fname = ospj(args.result_dir, 'lat')
+        print('Working on latent-guided image synthesis...')
+            # latent-guided image synthesis
+        y_trg_list = [torch.tensor(y).repeat(N).to(device)
+                    for y in range(min(args.num_domains, 5))]
+        z_trg_list = torch.randn(args.num_outs_per_domain, 1, args.latent_dim).repeat(1, N, 1).to(device)
+        for psi in [0.5, 0.7, 1.0]:
+            filename = ospj(args.sample_dir, 'latent_psi_%.1f.jpg' % (psi))
+            utils.translate_using_latent(nets_ema, args, src, y_trg_list, z_trg_list, psi, filename)
+
+        fname = ospj(args.result_dir, 'ref')
+        # print('Working on {}...'.format(fname))
+        # utils.translate_using_reference(nets_ema, args, src.x, ref.x, ref.y, fname)
 
 
     @torch.no_grad()

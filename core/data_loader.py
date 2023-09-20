@@ -55,6 +55,8 @@ class DefaultDataset(data.Dataset):
             img = self.transform(img)
         
         img = img.reshape((3, 1024))
+
+        print(f"Label: {self.targets[index]}")
         
         return img, self.targets[index]
         
