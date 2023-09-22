@@ -56,8 +56,6 @@ class DefaultDataset(data.Dataset):
         
         img = img.reshape((3, 1024))
 
-        print(f"Label: {self.targets[index]}")
-        
         return img, self.targets[index]
         
 
@@ -114,9 +112,9 @@ def _make_balanced_sampler(labels):
     return WeightedRandomSampler(weights, len(weights))
 
 def resize_signal(x):
-        # add padding to the signal, so the final shape is a power of 2
-        x = np.pad(x, ((0, (2**int(np.ceil(np.log2(x.shape[0]))) - x.shape[0])), (0 , 0)), 'constant')
-        return x
+    # add padding to the signal, so the final shape is a power of 2
+    x = np.pad(x, ((0, (2**int(np.ceil(np.log2(x.shape[0]))) - x.shape[0])), (0 , 0)), 'constant')
+    return x
 
 def get_train_loader(root, which='source', img_size=1000,
                      batch_size=8, prob=0.5, num_workers=4):

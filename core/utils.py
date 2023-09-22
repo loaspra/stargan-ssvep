@@ -58,20 +58,32 @@ def denormalize(x):
     return out.clamp_(0, 1)
 
 
+def get_FFT(x):
+    fft = abs(np.fft.fft(x))
+    # calculate the frequencies
+    freqs = np.fft.fftfreq(len(x)) * 250
+    return fft, freqs
+
 def save_image(x, ncol, filename):
 
-    
-    for i in range(x.shape[0]):
+    np.save(filename + f"_b", x.cpu())
+    # make a subplot for x.shape[0] signals
+    fig, axs = plt.subplots(x.shape[0] % 10, 1, figsize=(10, 10))
+    for i in range(x.shape[0] % 10):
         # save the signal as a .npy
-        np.save(filename, x.cpu())
+        
+        # plot only the fft of the signal
+        fft, freqs = get_FFT(x[i].cpu())
+        axs[i].plot(freqs, fft)
+        axs[i].set_title(f"FFT of signal {str(i)}")
+        axs[i].set_xlabel("Frequency")
+        axs[i].set_ylabel("Amplitude")
+        axs[i].set_xlim(0, 22)
     
-        # print(x[i][0].cpu()) <- plot it
-        plt.plot(x[i][0].cpu())
-        plt.savefig(filename + str(i) + '.png')
-        plt.close()
-
-        # vutils.save_image(x[i].cpu(), filename + str(i) + '.png', nrow=ncol, padding=0)
-            
+    # save the figure
+    plt.savefig(filename + ".png")
+    plt.close()
+    
 
 
 
@@ -117,7 +129,6 @@ def translate_using_latent(nets, args, x_src, y_trg_list, z_trg_list, psi, filen
 @torch.no_grad()
 def translate_using_reference(nets, args, x_src, x_ref, y_ref, filename):
     N, C, H = x_src.size()
-    # print(x_src.shape)
     wb = torch.ones(1, C, H).to(x_src.device)
     x_src_with_wb = torch.cat([wb, x_src], dim=0)
 
@@ -190,9 +201,7 @@ def interpolate(nets, args, x_src, s_prev, s_next):
         entries = torch.cat([x_src.cpu(), x_fake.cpu()], dim=2)
         frame = torchvision.utils.make_grid(entries, nrow=B, padding=0, pad_value=-1).unsqueeze(0)
         frames.append(frame)
-    # print("frames shape: " + str(frames[0].shape))
     frames = torch.cat(frames)
-    # print("[2] frames shape: " + str(frames.shape))
     return frames
 
 
@@ -236,9 +245,6 @@ def video_ref(nets, args, x_src, x_ref, y_ref, fname):
         interpolated = interpolate(nets, args, x_src, s_prev, s_next)
         entries = [x_prev, x_next]
         slided = slide(entries)  # (T, C, 256*2)
-        # print(x_src.shape)
-        # print(slided.shape)
-        # print(interpolated.shape)
         frames = torch.cat([slided, interpolated], dim=2).cpu()  # (T, C, 256*(batch+1))
         video.append(frames)
         x_prev, y_prev, s_prev = x_next, y_next, s_next
