@@ -66,21 +66,29 @@ def get_FFT(x):
 
 def save_image(x, ncol, filename):
 
+    x = x.cpu()
     np.save(filename + f"_b", x.cpu())
-    # make a subplot for x.shape[0] signals
-    fig, axs = plt.subplots(x.shape[0] % 10, 1, figsize=(10, 10))
-    for i in range(x.shape[0] % 10):
-        # save the signal as a .npy
-        
-        # plot only the fft of the signal
-        fft, freqs = get_FFT(x[i].cpu())
-        axs[i].plot(freqs, fft)
-        axs[i].set_title(f"FFT of signal {str(i)}")
-        axs[i].set_xlabel("Frequency")
-        axs[i].set_ylabel("Amplitude")
-        axs[i].set_xlim(0, 22)
-    
-    # save the figure
+    ss = int(np.ceil(np.sqrt(x.shape[0])))
+
+    fig, axs = plt.subplots(ss, ss, figsize=(10, 10))
+
+    for i in range(x.shape[0]):
+        ex = (i) // ss
+        ne = (i) % ss
+        for j in range(x.shape[1]):
+            x_ = x[i, j, :]
+            # plot the fft  of the signal
+            fft, freqs = get_FFT(x_)
+            axs[ex, ne].plot(freqs, fft)
+
+        axs[ex, ne].set_title(f"FFT of signal {str(i)}")
+        axs[ex, ne].set_xlabel("Frequency")
+        axs[ex, ne].set_ylabel("Amplitude")
+        axs[ex, ne].set_xlim(0, 22)
+
+    plt.xlabel("Frequency")
+    plt.ylabel("Amplitude")
+    plt.xlim(0, 22)
     plt.savefig(filename + ".png")
     plt.close()
     
@@ -139,12 +147,14 @@ def translate_using_reference(nets, args, x_src, x_ref, y_ref, filename):
     make_dot(nets.style_encoder(x_ref, y_ref)).render("style_encoder", format="png")
     
     s_ref_list = s_ref.unsqueeze(1).repeat(1, N, 1)
+    print(s_ref_list.shape)
 
     x_concat = [x_src_with_wb]
     for i, s_ref in enumerate(s_ref_list):
         
         x_fake = nets.generator(x_src, s_ref, masks=masks)
         x_fake_with_ref = torch.cat([x_ref[i:i+1], x_fake], dim=0)
+        print(f"Shape of syntetic image: {x_fake.shape}")
         save_image(x_fake, N+1, filename + '_%02d' % i)
 
     del x_concat
