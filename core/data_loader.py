@@ -126,8 +126,8 @@ def get_train_loader(root, which='source', img_size=1000,
         resize_signal,
 
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5],
-                             std=[0.5]),
+        transforms.Normalize(mean=[0],
+                             std=[1]),
     ])
 
     # As we dont work with images, we cannot use the ImageFolder class
@@ -160,8 +160,8 @@ def get_eval_loader(root, img_size=1000, batch_size=32,
         mean = [0.485]
         std = [0.229]
     else:
-        mean = [0.5]
-        std = [0.5]
+        mean = [0]
+        std = [1]
 
 
     transform = transforms.Compose([
@@ -188,8 +188,8 @@ def get_test_loader(root, img_size=256, batch_size=32,
     transform = transforms.Compose([
         resize_signal,
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5],
-                             std=[0.5]),
+        transforms.Normalize(mean=[0],
+                             std=[1]),
     ])
 
     # dataset = ImageFolder(root, transform)
