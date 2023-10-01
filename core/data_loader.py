@@ -33,12 +33,7 @@ def listdir(dname):
 
 
 class DefaultDataset(data.Dataset):
-    # def __init__(self, root, transform=None):
-    #     self.samples = listdir(root)
-    #     self.samples.sort()
-    #     self.transform = transform
-    #     self.targets = None
-
+    
     def __init__(self, root, transform=None):
         self.samples = listdir(root)
         self.samples.sort()
@@ -121,9 +116,8 @@ def get_train_loader(root, which='source', img_size=1000,
     print('Preparing DataLoader to fetch %s images '
           'during the training phase...' % which)
 
-
     transform = transforms.Compose([
-        resize_signal,
+        # resize_signal,
 
         transforms.ToTensor(),
         transforms.Normalize(mean=[0],
@@ -165,7 +159,7 @@ def get_eval_loader(root, img_size=1000, batch_size=32,
 
 
     transform = transforms.Compose([
-        resize_signal,
+        # resize_signal,
 
         transforms.ToTensor(),
         transforms.Normalize(mean=mean, std=std)
@@ -186,7 +180,7 @@ def get_test_loader(root, img_size=256, batch_size=32,
 
 
     transform = transforms.Compose([
-        resize_signal,
+        # resize_signal,
         transforms.ToTensor(),
         transforms.Normalize(mean=[0],
                              std=[1]),
