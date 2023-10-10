@@ -214,7 +214,7 @@ class Generator(nn.Module):
         super().__init__()
         dim_in = 2 ** 14 // img_size
         self.img_size = img_size
-        self.from_rgb = nn.Conv1d(3, dim_in, 3, 1, 1) # not used
+        self.from_rgb = nn.Conv1d(3, dim_in, 3, 1, 1) # used
         self.encode = nn.ModuleList()
         self.decode = nn.ModuleList()
         self.to_rgb = nn.Sequential(

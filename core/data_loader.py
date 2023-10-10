@@ -46,6 +46,7 @@ class DefaultDataset(data.Dataset):
         img = np.load(fname, allow_pickle=True)
         
         img = img.astype(np.float32)
+
         if self.transform is not None:
             img = self.transform(img)
         
@@ -80,8 +81,6 @@ class ReferenceDataset(data.Dataset):
         label = self.targets[index]
         img = np.load(fname)
         img2 = np.load(fname2)
-        # Now, reshape the data to the (3, 1500) shape
-
 
         # COnvert both to numpy float32
         img = img.astype(np.float32)
@@ -108,10 +107,10 @@ def _make_balanced_sampler(labels):
 
 def resize_signal(x):
     # add padding to the signal, so the final shape is a power of 2
-    x = np.pad(x, ((0, (2**int(np.ceil(np.log2(x.shape[0]))) - x.shape[0])), (0 , 0)), 'constant')
+    x = np.pad(x, ((0, 0), (0, (2**int(np.ceil(np.log2(x.shape[-1]))) - x.shape[-1]))), 'constant')
     return x
 
-def get_train_loader(root, which='source', img_size=1000,
+def get_train_loader(root, which='source', img_size=256,
                      batch_size=8, prob=0.5, num_workers=4):
     print('Preparing DataLoader to fetch %s images '
           'during the training phase...' % which)
@@ -159,7 +158,7 @@ def get_eval_loader(root, img_size=1000, batch_size=32,
 
 
     transform = transforms.Compose([
-        # resize_signal,
+        resize_signal,
 
         transforms.ToTensor(),
         transforms.Normalize(mean=mean, std=std)
@@ -180,7 +179,7 @@ def get_test_loader(root, img_size=256, batch_size=32,
 
 
     transform = transforms.Compose([
-        # resize_signal,
+        resize_signal,
         transforms.ToTensor(),
         transforms.Normalize(mean=[0],
                              std=[1]),

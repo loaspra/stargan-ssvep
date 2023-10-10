@@ -84,15 +84,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # model arguments
-    parser.add_argument('--img_size', type=int, default=256,
+    parser.add_argument('--img_size', type=int, default=1024,
                         help='Image resolution')
-    parser.add_argument('--num_domains', type=int, default=2,
+    parser.add_argument('--num_domains', type=int, default=4,
                         help='Number of domains')
     parser.add_argument('--latent_dim', type=int, default=16,
                         help='Latent vector dimension')
     parser.add_argument('--hidden_dim', type=int, default=512,
                         help='Hidden dimension of mapping network')
-    parser.add_argument('--style_dim', type=int, default=8,
+    parser.add_argument('--style_dim', type=int, default=64,
                         help='Style code dimension')
 
     # weight for objective functions
@@ -104,7 +104,7 @@ if __name__ == '__main__':
                         help='Weight for style reconstruction loss')
     parser.add_argument('--lambda_ds', type=float, default=1,
                         help='Weight for diversity sensitive loss')
-    parser.add_argument('--ds_iter', type=int, default=10000,
+    parser.add_argument('--ds_iter', type=int, default=5000,
                         help='Number of iterations to optimize diversity sensitive loss')
     parser.add_argument('--w_hpf', type=float, default=1,
                         help='weight for high-pass filtering')
@@ -118,7 +118,7 @@ if __name__ == '__main__':
                         help='Iterations to resume training/testing')
     parser.add_argument('--batch_size', type=int, default=8,
                         help='Batch size for training')
-    parser.add_argument('--val_batch_size', type=int, default=32,
+    parser.add_argument('--val_batch_size', type=int, default=8,
                         help='Batch size for validation')
     parser.add_argument('--lr', type=float, default=5*1e-4,
                         help='Learning rate for D, E and G')
@@ -137,7 +137,7 @@ if __name__ == '__main__':
     parser.add_argument('--mode', type=str, required=True,
                         choices=['train', 'sample', 'eval', 'align'],
                         help='This argument is used in solver')
-    parser.add_argument('--num_workers', type=int, default=4,
+    parser.add_argument('--num_workers', type=int, default=2,  # 4 
                         help='Number of workers used in DataLoader')
     parser.add_argument('--seed', type=int, default=777,
                         help='Seed for random number generator')
@@ -174,9 +174,9 @@ if __name__ == '__main__':
 
     # step size
     parser.add_argument('--print_every', type=int, default=10)
-    parser.add_argument('--sample_every', type=int, default=1000)
-    parser.add_argument('--save_every', type=int, default=1000)
-    parser.add_argument('--eval_every', type=int, default=10000)
+    parser.add_argument('--sample_every', type=int, default=5000)
+    parser.add_argument('--save_every', type=int, default=5000)
+    parser.add_argument('--eval_every', type=int, default=100000)
 
     args = parser.parse_args()
     main(args)

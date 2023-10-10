@@ -141,20 +141,22 @@ def translate_using_reference(nets, args, x_src, x_ref, y_ref, filename):
     x_src_with_wb = torch.cat([wb, x_src], dim=0)
 
     masks = nets.fan.get_heatmap(x_src) if args.w_hpf > 0 else None
-    # y_ref = y_ref
     s_ref = nets.style_encoder(x_ref, y_ref)
 
-    make_dot(nets.style_encoder(x_ref, y_ref)).render("style_encoder", format="png")
+    print(f"Shape of reference image: {x_ref.shape}")
+    # Label
+    print(f"Shape of reference label: {y_ref.shape}, value: {y_ref}")
+
+    # make_dot(nets.style_encoder(x_ref, y_ref)).render("style_encoder", format="png")
     
     s_ref_list = s_ref.unsqueeze(1).repeat(1, N, 1)
-    print(s_ref_list.shape)
+    print(f"Shape of reference style: {s_ref_list.shape}")
 
     x_concat = [x_src_with_wb]
     for i, s_ref in enumerate(s_ref_list):
         
         x_fake = nets.generator(x_src, s_ref, masks=masks)
         x_fake_with_ref = torch.cat([x_ref[i:i+1], x_fake], dim=0)
-        print(f"Shape of syntetic image: {x_fake.shape}")
         save_image(x_fake, N+1, filename + '_%02d' % i)
 
     del x_concat
