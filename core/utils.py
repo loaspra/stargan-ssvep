@@ -25,7 +25,7 @@ import torch.nn.functional as F
 import torchvision
 import torchvision.utils as vutils
 
-from torchviz import make_dot
+# from torchviz import make_dot
 
 
 def save_json(json_file, filename):
@@ -136,6 +136,7 @@ def translate_using_latent(nets, args, x_src, y_trg_list, z_trg_list, psi, filen
 
 @torch.no_grad()
 def translate_using_reference(nets, args, x_src, x_ref, y_ref, filename):
+    print(f"Shape of source image: {x_src.shape}")
     N, C, H = x_src.size()
     wb = torch.ones(1, C, H).to(x_src.device)
     x_src_with_wb = torch.cat([wb, x_src], dim=0)
@@ -152,12 +153,16 @@ def translate_using_reference(nets, args, x_src, x_ref, y_ref, filename):
     s_ref_list = s_ref.unsqueeze(1).repeat(1, N, 1)
     print(f"Shape of reference style: {s_ref_list.shape}")
 
+    print(f"Into de torch: {x_ref.shape} ==> {x_ref}")
+
     x_concat = [x_src_with_wb]
     for i, s_ref in enumerate(s_ref_list):
         
         x_fake = nets.generator(x_src, s_ref, masks=masks)
         x_fake_with_ref = torch.cat([x_ref[i:i+1], x_fake], dim=0)
         save_image(x_fake, N+1, filename + '_%02d' % i)
+        print(f"saving into {filename + '_%02d' % i}")  
+        # save_image(x_ref, N+1, filename + '_%02d' % i)
 
     del x_concat
 

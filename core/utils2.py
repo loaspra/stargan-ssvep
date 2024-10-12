@@ -64,19 +64,21 @@ def generate_ref_signal(Freq_phase_path: str, freqs: list, N: int, n_harmonics: 
     index_freqs = data['freqs'].round(1).reshape(-1).tolist()
     phases = data['phases'].reshape(-1)  # phases
 
-        # Reference signal
+    # Reference signal
     ref_signal = np.zeros((N, len(freqs), n_harmonics * 2,))
     # For each frequency
     f = 0
     for frequency in freqs:
         phase = phases[index_freqs.index(round(frequency, 1))]
+        # phase = 3
         
         # For each harmonic
-        for i in range(0, n_harmonics):
+        for i in range(0, n_harmonics * 2, 2):
             # Sinusoid
-            ref_signal[:, f, i] = np.sin(2 * np.pi * frequency * (i + 1) * np.arange(N) / fs + phase)
+            ref_signal[:, f, i] = np.sin(2 * np.pi * frequency * (i/2 + 1) * np.arange(N) / fs + phase)
+            # ref_signal[:, f, i] = np.arange(N)
             # Cosinusoid
-            ref_signal[:, f, i + 1] = np.cos(2 * np.pi * frequency * (i + 1) * np.arange(N) / fs + phase)
+            ref_signal[:, f, i + 1] = np.cos(2 * np.pi * frequency * (i/2 + 1) * np.arange(N) / fs + phase)
        
         f+=1
 
@@ -141,10 +143,17 @@ def cca(signal1, signal2):
 
     return X_c, Y_c
 
-# Function 3: feature_extraction
-# Input: sub-band signals, reference signals, weight vector
-# Output: feature vector
+
 def feature_extraction(subband_signals, ref_signals, n_freq):
+    """
+    Extracts features from sub-band signals and reference signals using Canonical Correlation Analysis (CCA).
+    Parameters:
+        subband_signals (numpy.ndarray): A 3D array of shape (n_subbands, n_samples, n_timepoints) representing the sub-band signals.
+        ref_signals (numpy.ndarray): A 3D array of shape (n_samples, n_freq, n_timepoints) representing the reference signals.
+        n_freq (int): The number of frequency components in the reference signals.
+    Returns:
+        int: The predicted class based on the extracted features.
+    """
     # Number of sub-band signals
     n_subbands = subband_signals.shape[0]
     # Feature vector
@@ -163,16 +172,30 @@ def feature_extraction(subband_signals, ref_signals, n_freq):
             feature_vector[freq] = np.max(correl)
             result += (fb_coefs[sub] * (feature_vector ** 2))
         
-        print(f"result: {result}")
         predicted = np.argmax(result) + 1
 
     return predicted
 
 
-# Function 4: fbcca
-# Input: signal, sampling frequency, number of harmonics, number of sub-bands, filter bank design, weight vector, reference signals
-# Output: target frequency
+"""
+    Perform Frequency-Based Common Spatial Pattern Analysis (FBCSP) on the input signal.
+
+    Args:
+        in_signal (ndarray): Input signal.
+        fs (int): Sampling frequency of the input signal.
+        n_subbands (int): Number of subbands to divide the signal into.
+        filter_bank_design (str): Design of the filter bank.
+        w (int): Window size for feature extraction.
+        ref_signals (ndarray): Reference signals for feature extraction.
+        lowest_freq (float): Lowest frequency of the subbands.
+        upmost_freq (float): Highest frequency of the subbands.
+
+    Returns:
+        ndarray: Predicted target frequency.
+
+"""
 def fbcca(in_signal, fs, n_subbands, filter_bank_design, w, ref_signals, lowest_freq, upmost_freq):
+    
     # Sub-band signals
     in_signal = in_signal.swapaxes(0, 1)
     subband_signals = filter_bank_analysis(in_signal, fs, n_subbands, filter_bank_design, lowest_freq, upmost_freq)

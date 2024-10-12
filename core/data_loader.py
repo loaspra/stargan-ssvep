@@ -14,14 +14,16 @@ import os
 import random
 
 from munch import Munch
-from PIL import Image
+# from PIL import Image
 import numpy as np
 
 import torch
 from torch.utils import data
 from torch.utils.data.sampler import WeightedRandomSampler
 from torchvision import transforms
-from torchvision.datasets import ImageFolder
+# from torchvision.datasets import ImageFolder
+
+from matplotlib import pyplot as plt
 
 # Modifying the data loader to work with our dataset (EEG time domain data)
 def listdir(dname):
@@ -44,7 +46,8 @@ class DefaultDataset(data.Dataset):
     def __getitem__(self, index):
         fname = self.samples[index]
         img = np.load(fname, allow_pickle=True)
-        
+        print(f"Debug, img.shape: {img.shape}") # (3, 1024)
+
         img = img.astype(np.float32)
 
         if self.transform is not None:
@@ -158,7 +161,7 @@ def get_eval_loader(root, img_size=1000, batch_size=32,
 
 
     transform = transforms.Compose([
-        resize_signal,
+        # resize_signal,
 
         transforms.ToTensor(),
         transforms.Normalize(mean=mean, std=std)
@@ -179,7 +182,7 @@ def get_test_loader(root, img_size=256, batch_size=32,
 
 
     transform = transforms.Compose([
-        resize_signal,
+        # resize_signal,
         transforms.ToTensor(),
         transforms.Normalize(mean=[0],
                              std=[1]),

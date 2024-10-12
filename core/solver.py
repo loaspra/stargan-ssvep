@@ -25,7 +25,7 @@ import core.utils as utils
 from metrics.eval import calculate_metrics
 
 
-from torchviz import make_dot
+# from torchviz import make_dot
 
 class Solver(nn.Module):
     def __init__(self, args):

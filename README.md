@@ -68,6 +68,9 @@ python main.py --mode sample --num_domains 2 --resume_iter 100000 --w_hpf 1 \
                --ref_dir assets/representative/celeba_hq/ref
 ```
 
+> Train for ssvep: `python main.py --mode train --train_img_dir='data/train' --val_img_dir='data/val' --w_hpf=0`
+> Evail for ssvep: `python main.py --mode sample --src_dir='data/test/ --ref_dir='./data/ref/' --w_hpf=0`
+
 To transform a custom image, first crop the image manually so that the proportion of face occupied in the whole is similar to that of CelebA-HQ. Then, run the following command for additional fine rotation and cropping. All custom images in the `inp_dir` directory will be aligned and stored in the `out_dir` directory.
 
 ```bash

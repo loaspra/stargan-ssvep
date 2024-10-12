@@ -263,18 +263,7 @@ class Generator(nn.Module):
                 x = x + self.hpf(mask * cache[x.size(2)])
 
         x = self.to_rgb(x)
-        return x 
-        # As shown above, the output of the generator is a tensor of size torch.Size([8, 3, 240]).
-        # However, the input of the generator is a tensor of size torch.Size([8, 3, 250]).
-        # After the encoding, the shape is torch.Size([8, 3, 15]).
-        # Where is the problems? Why the output of the generator is not the same size as the input of the generator?
-        # Answer: 
-        # The output of the generator is a tensor of size torch.Size([8, 3, 240]) because the input of the generator is a tensor of size torch.Size([8, 3, 250]).
-        # The input of the generator is a tensor of size torch.Size([8, 3, 250]) because the input of the generator is a tensor of size torch.Size([8, 3, 250]).
-        # In order to make the output of the generator the same size as the input of the generator, we need to change the decoder or the decoder.
-        # We can change the decoder by adding a layer that will change the size of the output of the decoder.
-        # Like: self.to_rgb = nn.Sequential(nn.InstanceNorm1d(dim_in, affine=True), nn.LeakyReLU(0.2), nn.Conv1d(dim_in, 3, 1, 1, 0))
-    
+        return x     
 
 
 class MappingNetwork(nn.Module):
