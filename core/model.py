@@ -218,9 +218,9 @@ class Generator(nn.Module):
         self.encode = nn.ModuleList()
         self.decode = nn.ModuleList()
         self.to_rgb = nn.Sequential(
-            nn.InstanceNorm1d(16, affine=True),
+            nn.InstanceNorm1d(dim_in, affine=True),
             nn.LeakyReLU(0.2),
-            nn.Conv1d(16, 3, 1, 1, 0))
+            nn.Conv1d(dim_in, 3, 1, 1, 0))
         
         # down/up-sampling blocks
         repeat_num = int(np.log2(img_size)) - 4
@@ -317,10 +317,6 @@ class StyleEncoder(nn.Module):
         blocks += [nn.LeakyReLU(0.2)]
         self.shared = nn.Sequential(*blocks)
         
-        # Shared layers:
-        # If the input tensor has a shape of (8, 3, 250), then the output tensor after appling self.shared(x) should have a shape of (8, 512, 1), however it has a shape of (8, 512, 2). Why? how can I solve this?
-        # To solve this, I add a padding layer to the first conv layer in self.shared, then the output shape is (8, 512, 1)
-        # The padding layer is nn.Conv1d(3, dim_in, 2, 1, 1)
 
         self.unshared = nn.ModuleList()
         

@@ -25,6 +25,12 @@ import torch.nn.functional as F
 import torchvision
 import torchvision.utils as vutils
 
+import scipy.io as sio
+from scipy import signal
+from scipy.signal import butter, lfilter
+import pandas as pd
+
+
 # from torchviz import make_dot
 
 
@@ -65,33 +71,32 @@ def get_FFT(x):
     return fft, freqs
 
 def save_image(x, ncol, filename):
+    # print([item.shape for item in x])
+    x = [item.cpu() for item in x]
+    np.save(filename + f"_b", x)
+    # ss = int(np.ceil(np.sqrt(len(x))))
 
-    x = x.cpu()
-    np.save(filename + f"_b", x.cpu())
-    ss = int(np.ceil(np.sqrt(x.shape[0])))
+    # fig, axs = plt.subplots(ss, ss, figsize=(10, 10))
 
-    fig, axs = plt.subplots(ss, ss, figsize=(10, 10))
+    # for i in range(len(x)):
+    #     ex = i // ss
+    #     ne = i % ss
+    #     for j in range(x[i].shape[0]):
+    #         x_ = x[i][j, :]
+    #         # plot the fft of the signal
+    #         fft, freqs = get_FFT(x_)
+    #         axs[ex, ne].plot(freqs, fft)
 
-    for i in range(x.shape[0]):
-        ex = (i) // ss
-        ne = (i) % ss
-        for j in range(x.shape[1]):
-            x_ = x[i, j, :]
-            # plot the fft  of the signal
-            fft, freqs = get_FFT(x_)
-            axs[ex, ne].plot(freqs, fft)
+    #     axs[ex, ne].set_title(f"FFT of signal {str(i)}")
+    #     axs[ex, ne].set_xlabel("Frequency")
+    #     axs[ex, ne].set_ylabel("Amplitude")
+    #     axs[ex, ne].set_xlim(0, 22)
 
-        axs[ex, ne].set_title(f"FFT of signal {str(i)}")
-        axs[ex, ne].set_xlabel("Frequency")
-        axs[ex, ne].set_ylabel("Amplitude")
-        axs[ex, ne].set_xlim(0, 22)
-
-    plt.xlabel("Frequency")
-    plt.ylabel("Amplitude")
-    plt.xlim(0, 22)
-    plt.savefig(filename + ".png")
-    plt.close()
-    
+    # plt.xlabel("Frequency")
+    # plt.ylabel("Amplitude")
+    # plt.xlim(0, 22)
+    # plt.savefig(filename + ".png")
+    # plt.close()    
 
 
 
@@ -136,7 +141,7 @@ def translate_using_latent(nets, args, x_src, y_trg_list, z_trg_list, psi, filen
 
 @torch.no_grad()
 def translate_using_reference(nets, args, x_src, x_ref, y_ref, filename):
-    print(f"Shape of source image: {x_src.shape}")
+    # print(f"Shape of source image: {x_src.shape}")
     N, C, H = x_src.size()
     wb = torch.ones(1, C, H).to(x_src.device)
     x_src_with_wb = torch.cat([wb, x_src], dim=0)
@@ -144,25 +149,26 @@ def translate_using_reference(nets, args, x_src, x_ref, y_ref, filename):
     masks = nets.fan.get_heatmap(x_src) if args.w_hpf > 0 else None
     s_ref = nets.style_encoder(x_ref, y_ref)
 
-    print(f"Shape of reference image: {x_ref.shape}")
-    # Label
-    print(f"Shape of reference label: {y_ref.shape}, value: {y_ref}")
+    # print(f"Shape of reference image: {x_ref.shape}")
+    # # Label
+    # print(f"Shape of reference label: {y_ref.shape}, value: {y_ref}")
 
     # make_dot(nets.style_encoder(x_ref, y_ref)).render("style_encoder", format="png")
     
     s_ref_list = s_ref.unsqueeze(1).repeat(1, N, 1)
     print(f"Shape of reference style: {s_ref_list.shape}")
 
-    print(f"Into de torch: {x_ref.shape} ==> {x_ref}")
+    # print(f"Into de torch: {x_ref.shape} ==> {x_ref}")
 
     x_concat = [x_src_with_wb]
     for i, s_ref in enumerate(s_ref_list):
         
         x_fake = nets.generator(x_src, s_ref, masks=masks)
         x_fake_with_ref = torch.cat([x_ref[i:i+1], x_fake], dim=0)
-        save_image(x_fake, N+1, filename + '_%02d' % i)
-        print(f"saving into {filename + '_%02d' % i}")  
-        # save_image(x_ref, N+1, filename + '_%02d' % i)
+        x_concat += [x_fake_with_ref]
+        
+    print(f"saving into {filename + '_%02d' % i}")  
+    save_image(x_concat, N+1, filename + '_%02d' % i)
 
     del x_concat
 
@@ -326,3 +332,143 @@ def save_video(fname, images, output_fps=30, vcodec='libx264', filters=''):
 def tensor2ndarray255(images):
     images = torch.clamp(images * 0.5 + 0.5, 0, 1)
     return images.cpu().numpy().transpose(0, 2, 3, 1) * 255
+
+
+"""
+# ======================== #
+# Signal-related functions #
+# ======================== #
+"""
+def read_mat_file(file_path):
+    data = sio.loadmat(file_path)
+    return data
+
+
+def read_mat_file_as_df(file_path, columns):
+    data = read_mat_file(file_path)
+    data_values = data['data']
+    # shape --> (64, 1500, 40, 6)
+    data_values = data_values[:, 125:(1250 + 125), :, :]
+    data_values = data_values.reshape((64, 1250*40*6), order='F')
+    data_labels = np.tile(np.arange(0, 40), 6).repeat(1250)
+    data_values = data_values.swapaxes(0, 1)
+    data_df = pd.DataFrame(data_values)
+    data_df.columns = ["FP1", "FPZ", "FP2", "AF3", "AF4", "F7", "F5", "F3", "F1", "FZ", "F2", "F4", "F6", "F8", "FT7", "FC5", "FC3", "FC1", "FCz", "FC2", "FC4", "FC6", "FT8", "T7", "C5", "C3", "C1", "Cz", "C2", "C4", "C6", "T8", "M1", "TP7", "CP5", "CP3", "CP1", "CPZ", "CP2", "CP4", "CP6", "TP8", "M2", "P7", "P5", "P3", "P1", "PZ", "P2", "P4", "P6", "P8", "PO7", "PO5", "PO3", "POz", "PO4", "PO6", "PO8", "CB1"
+                       , "O1", "Oz", "O2", "CB2"]
+    data_df['labels'] = data_labels
+
+    if columns is not None:
+        data_df = data_df[columns + ['labels']]
+    return data_df
+
+
+def read_all_mat_files_and_save_as_csv(columns=None, labels = None):
+    for i in range(1, 36):
+        file_path = "./data/raw/S" + str(i) + ".mat"
+        data_df = read_mat_file_as_df(file_path, columns)
+
+        if labels is not None:
+            # Return only the data with a label in the labels list
+            data_df = data_df[data_df['labels'].isin(labels)]
+            
+        data_df.to_csv("./data/processed/S" + str(i) + ".csv", index=False)
+
+
+
+def segment_signal_into_windows(df, window_size, fs = 250, padding = 140, n_blocks = 6, block_size = 1250):
+    # Get the n_samples of padding (which comes in ms)
+    sp = int(padding * fs / 1000)
+    N = df.shape[0]
+    dim = df.shape[1]
+    # K = int(N/window_size)
+    segments = np.empty((n_blocks, window_size, dim))
+    
+    for i in range(n_blocks):
+        # print((i*block_size+sp), (i*block_size+window_size+sp))
+        segment = df[(i*block_size+sp):(i*block_size+window_size+sp),:]
+        segments[i] = np.vstack(segment)
+    return segments
+
+
+def segment_signal_into_overlapping_windows(df, window_size, overlap):
+    N = df.shape[0]
+    dim = df.shape[1]
+    K = int(N/window_size)
+    segments = np.empty((K, window_size, dim))
+    for i in range(K):
+        segment = df[i*overlap : i*overlap+window_size,:]
+        segments[i] = np.vstack(segment)
+    return segments
+
+
+# def butter_bandpass(lowcut, highcut, fs, order=6):
+#     nyq = 0.5 * fs
+#     low = float(lowcut) / nyq
+#     high = float(highcut) / nyq
+#     b, a = butter(order, [low, high], btype='band', analog=False)
+#     return b, a
+
+
+def butter_bandpass_filter(data, lowcut, highcut, fs, order=6):
+    nyq = 0.5 * fs
+    low = float(lowcut) / nyq
+    high = float(highcut) / nyq
+    b, a = butter(order, [low, high], btype='band', analog=False)
+    y = lfilter(b, a, data, axis=0)
+    return y
+
+
+def apply_filter_to_segments(segments, lowcut, highcut, fs, order=6, segment_dim=1250):
+    N = segments.shape[0]
+    dim = segments.shape[2]
+    filtered_segments = np.empty((N, segment_dim, dim))
+    for i in range(N):
+        segment = segments[i]
+        filtered_segments[i] = butter_bandpass_filter(segment, lowcut, highcut, fs, order=order)
+    return filtered_segments
+
+
+def apply_filter_to_signal(signal, lowcut, highcut, fs, order=6):
+    dim = signal.shape[1]
+    filtered_signal = np.empty((signal.shape[0], dim))
+    filtered_signal = butter_bandpass_filter(signal, lowcut, highcut, fs, order=order)
+    return filtered_signal
+
+
+def apply_filter_to_df(df, lowcut, highcut, fs, order=6):
+    dim = df.shape[1]
+    filtered_df = np.empty((df.shape[0], dim))
+    filtered_df = butter_bandpass_filter(df, lowcut, highcut, fs, order=order)
+    return filtered_df
+
+
+def apply_filter_to_df_with_labels(df, lowcut, highcut, fs, order=6):
+    dim = df.shape[1]
+    filtered_df = np.empty((df.shape[0], dim))
+    filtered_df = butter_bandpass_filter(df, lowcut, highcut, fs, order=order)
+    filtered_df['labels'] = df['labels']
+    return filtered_df
+
+
+def segment_and_filter_all_subjects(src_dir, target_dir, window_size, lowcut, highcut, fs, order=6):
+    # save the segments on the target dir / label name
+    df = pd.read_csv(os.path.join(src_dir, "S1.csv"))
+    labels = df['labels'].unique()
+    for label in labels:
+        label_dir = os.path.join(target_dir, str(label))
+        if not os.path.exists(label_dir):
+            os.makedirs(label_dir)
+        
+        for i in range(1, 36):
+            file_path = os.path.join(src_dir, "S" + str(i) + ".csv")
+            df = pd.read_csv(file_path)
+            df = df[df['labels'] == label]
+            segments = segment_signal_into_windows(df.drop('labels', axis = 1).values, window_size)
+            filtered_segments = apply_filter_to_segments(segments, lowcut, highcut, fs, order=order, segment_dim=window_size)
+            for j in range(filtered_segments.shape[0]):
+                segment = filtered_segments[j].swapaxes(0, 1)
+
+                if segment.shape[1] == window_size:
+                    np.save(os.path.join(label_dir, "S" + str(i) + "_" + str(j) + ".npy"), segment)
+                else:
+                    print("segment with shape " + str(segment.shape) + " not saved")

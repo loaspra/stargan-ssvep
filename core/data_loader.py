@@ -36,24 +36,23 @@ def listdir(dname):
 
 class DefaultDataset(data.Dataset):
     
-    def __init__(self, root, transform=None):
+    def __init__(self, root, transform=None, img_size = 1024):
         self.samples = listdir(root)
         self.samples.sort()
         self.transform = transform
+        self.img_size = img_size
         # self.targets should contain the name of the folders inside root
         self.targets = [int(os.path.basename(os.path.dirname(x))) for x in self.samples]
 
     def __getitem__(self, index):
         fname = self.samples[index]
-        img = np.load(fname, allow_pickle=True)
-        print(f"Debug, img.shape: {img.shape}") # (3, 1024)
-
+        img = np.load(fname, allow_pickle=True) # (3, 1024)
         img = img.astype(np.float32)
 
         if self.transform is not None:
             img = self.transform(img)
         
-        img = img.reshape((3, 1024))
+        img = img.reshape((3, self.img_size))
 
         return img, self.targets[index]
         
@@ -63,9 +62,10 @@ class DefaultDataset(data.Dataset):
 
 
 class ReferenceDataset(data.Dataset):
-    def __init__(self, root, transform=None):
+    def __init__(self, root, transform=None, img_size = 1024):
         self.samples, self.targets = self._make_dataset(root)
         self.transform = transform
+        self.img_size = img_size
 
     def _make_dataset(self, root):
         domains = os.listdir(root)
@@ -93,8 +93,8 @@ class ReferenceDataset(data.Dataset):
             img = self.transform(img)
             img2 = self.transform(img2)
 
-        img = img.reshape((3, 1024))
-        img2 = img2.reshape((3, 1024))
+        img = img.reshape((3, self.img_size))
+        img2 = img2.reshape((3, self.img_size))
 
         return img, img2, label
 
@@ -128,9 +128,9 @@ def get_train_loader(root, which='source', img_size=256,
 
     # As we dont work with images, we cannot use the ImageFolder class
     if which == 'source':
-        dataset = DefaultDataset(root, transform)
+        dataset = DefaultDataset(root, transform, img_size=img_size)
     elif which == 'reference':
-        dataset = ReferenceDataset(root, transform)
+        dataset = ReferenceDataset(root, transform, img_size=img_size)
     else:
         raise NotImplementedError
 
@@ -167,7 +167,7 @@ def get_eval_loader(root, img_size=1000, batch_size=32,
         transforms.Normalize(mean=mean, std=std)
     ])
 
-    dataset = DefaultDataset(root, transform=transform)
+    dataset = DefaultDataset(root, transform=transform, img_size=img_size)
     return data.DataLoader(dataset=dataset,
                            batch_size=batch_size,
                            shuffle=shuffle,
@@ -190,7 +190,7 @@ def get_test_loader(root, img_size=256, batch_size=32,
 
     # dataset = ImageFolder(root, transform)
     # As we dont work with images, we cannot use the ImageFolder class
-    dataset = DefaultDataset(root, transform)
+    dataset = DefaultDataset(root, transform, img_size=img_size)
 
     return data.DataLoader(dataset=dataset,
                            batch_size=batch_size,

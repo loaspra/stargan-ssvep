@@ -32,6 +32,7 @@ class Solver(nn.Module):
         super().__init__()
         self.args = args
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        print(f"Training on {self.device}")
 
         self.nets, self.nets_ema = build_model(args)
         # below setattrs are to make networks be children of Solver, e.g., for self.to(self.device)
@@ -53,9 +54,10 @@ class Solver(nn.Module):
                     weight_decay=args.weight_decay)
 
             self.ckptios = [
-                CheckpointIO(ospj(args.checkpoint_dir, 'SSVEP_nets.ckpt'), data_parallel=True, **self.nets),
-                CheckpointIO(ospj(args.checkpoint_dir, 'SSVEP_nets_ema.ckpt'), data_parallel=True, **self.nets_ema),
-                CheckpointIO(ospj(args.checkpoint_dir, 'SSVEP_optims.ckpt'), **self.optims)]
+                CheckpointIO(ospj(args.checkpoint_dir, f"SSVEP_{args.runType}_nets.ckpt"), data_parallel=True, **self.nets),
+                CheckpointIO(ospj(args.checkpoint_dir, f"SSVEP_{args.runType}_nets_ema.ckpt"), data_parallel=True, **self.nets_ema),
+                CheckpointIO(ospj(args.checkpoint_dir, f"SSVEP_{args.runType}_optims.ckpt"), **self.optims)]
+            self.logFile = open(ospj(args.checkpoint_dir, f"SSVEP_{args.runType}_log.txt"), "w")
         else:
             self.ckptios = [CheckpointIO(ospj(args.checkpoint_dir, 'SSVEP_nets_ema.ckpt'), data_parallel=True, **self.nets_ema)]
 
@@ -105,7 +107,8 @@ class Solver(nn.Module):
             x_ref, x_ref2, y_trg = inputs.x_ref, inputs.x_ref2, inputs.y_ref
             z_trg, z_trg2 = inputs.z_trg, inputs.z_trg2
 
-            masks = nets.fan.get_heatmap(x_real) if args.w_hpf > 0 else None
+            # masks = nets.fan.get_heatmap(x_real) if args.w_hpf > 0 else None
+            masks = None # For SSVEP 
 
             # train the discriminator
             d_loss, d_losses_latent = compute_d_loss(
@@ -157,6 +160,7 @@ class Solver(nn.Module):
                 all_losses['G/lambda_ds'] = args.lambda_ds
                 log += ' '.join(['%s: [%.4f]' % (key, value) for key, value in all_losses.items()])
                 print(log)
+                self.logFile.write(log + "\n")
 
             # generate images for debugging
             if (i+1) % args.sample_every == 0:
@@ -169,8 +173,11 @@ class Solver(nn.Module):
 
             # compute FID and LPIPS if necessary
             if (i+1) % args.eval_every == 0:
-                calculate_metrics(nets_ema, args, i+1, mode='latent')
-                calculate_metrics(nets_ema, args, i+1, mode='reference')
+                # calculate_metrics(nets_ema, args, i+1, mode='latent')
+                # calculate_metrics(nets_ema, args, i+1, mode='reference')
+                continue
+
+        self.logFile.close()
 
     @torch.no_grad()
     def sample(self, loaders):
@@ -216,8 +223,6 @@ def compute_d_loss(nets, args, x_real, y_org, y_trg, z_trg=None, x_ref=None, mas
     # with real images
     x_real.requires_grad_()
     out = nets.discriminator(x_real, y_org)
-    # Save the network diagram 
-    
     loss_real = adv_loss(out, 1)
     loss_reg = r1_reg(out, x_real)
 

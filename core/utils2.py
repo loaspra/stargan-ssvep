@@ -76,7 +76,6 @@ def generate_ref_signal(Freq_phase_path: str, freqs: list, N: int, n_harmonics: 
         for i in range(0, n_harmonics * 2, 2):
             # Sinusoid
             ref_signal[:, f, i] = np.sin(2 * np.pi * frequency * (i/2 + 1) * np.arange(N) / fs + phase)
-            # ref_signal[:, f, i] = np.arange(N)
             # Cosinusoid
             ref_signal[:, f, i + 1] = np.cos(2 * np.pi * frequency * (i/2 + 1) * np.arange(N) / fs + phase)
        
@@ -113,8 +112,12 @@ def filter_bank_analysis(in_signal, fs, n_subbands, filter_bank_design, low_freq
             
             # Sub-band filter
             b, a = signal.cheby1(N, 0.1, Wn, 'bandpass')
+            # print(n_samples, 3 * max(len(a), len(b)))
             # Filtered signal
-            subband_signals[i, :, :] = signal.filtfilt(b, a, in_signal)
+            if 3 * max(len(a), len(b)) > n_samples:
+                subband_signals[i, :, :] = signal.filtfilt(b, a, in_signal, padlen=20)
+            else:
+                subband_signals[i, :, :] = signal.filtfilt(b, a, in_signal)
     
     elif filter_bank_design == 'M2':
         raise NotImplementedError()
@@ -131,12 +134,15 @@ def filter_bank_analysis(in_signal, fs, n_subbands, filter_bank_design, low_freq
 # Function 2: cca
 # Input: signal 1, signal 2
 # Output: correlation vector
-def cca(signal1, signal2):
+def cca(signal1, signal2, transpose=True):
     # Canonical correlation analysis
     cca = CCA(1)
     
     # Fit the model with signal 1 and signal 2
-    cca.fit(signal1.T, signal2.T)
+    if transpose:
+        cca.fit(signal1.T, signal2.T)
+    else:
+        cca.fit(signal1, signal2)
 
     # Correlation vector
     X_c, Y_c = cca.transform(signal1.T, signal2.T)
@@ -202,3 +208,85 @@ def fbcca(in_signal, fs, n_subbands, filter_bank_design, w, ref_signals, lowest_
     # Target frequency
     predicted = feature_extraction(subband_signals, ref_signals, w)
     return predicted
+
+
+# ****************************** #
+# ******** Combined-CCA ******** #
+# ****************************** #
+def combined_cca(in_signal, fs, n_subbands, filter_bank_design, ref_signals, template_signals, lowest_freq, upmost_freq):
+    """
+    Combined-CCA (ECCA) algorithm implementation.
+
+    Args:
+        in_signal (ndarray): Input EEG signal.
+        fs (int): Sampling frequency.
+        n_subbands (int): Number of sub-bands.
+        filter_bank_design (str): Filter bank design.
+        ref_signals (ndarray): Reference signals.
+        template_signals (ndarray): Template signals.
+        lowest_freq (float): Lowest frequency.
+        upmost_freq (float): Upmost frequency.
+
+    Returns:
+        int: Predicted target frequency.
+    """
+
+    # Sub-band signals
+    # in_signal = in_signal.swapaxes(0, 1)
+    subband_signals = filter_bank_analysis(in_signal, fs, n_subbands, filter_bank_design, lowest_freq, upmost_freq)
+
+    n_freqs = ref_signals.shape[1]
+    n_samples = ref_signals.shape[0]
+    n_channels = in_signal.shape[0]
+
+    # Initialize result array
+    result = np.zeros(n_freqs)
+
+    for f in range(n_freqs):
+        # Extract reference and template signals for the current frequency
+        Yf = ref_signals[:, f, :]
+        X_hatf = template_signals[f]
+
+        # Debug prints to check shapes
+        print(f"in_signal shape: {in_signal.shape}")
+        print(f"X_hatf shape: {X_hatf.shape}")
+
+        # Calculate weight matrices using CCA
+        Wx_X_X_hatf, _ = cca(in_signal, X_hatf, False)
+        Wx_X_Yf, Wyf_X_Yf = cca(in_signal, Yf, False)
+        W_X_hatf_X_hatf, _ = cca(X_hatf, Yf, False)
+
+        # Calculate Pearson's correlation coefficients
+        p1 = np.corrcoef(np.dot(in_signal.T, Wx_X_Yf[:, 0]), np.dot(Yf.T, Wyf_X_Yf[:, 0]))[0, 1]
+        p2 = np.corrcoef(np.dot(in_signal.T, Wx_X_X_hatf[:, 0]), np.dot(X_hatf.T, Wx_X_X_hatf[:, 0]))[0, 1]
+        p3 = np.corrcoef(np.dot(in_signal.T, Wx_X_Yf[:, 0]), np.dot(X_hatf.T, Wx_X_Yf[:, 0]))[0, 1]
+        p4 = np.corrcoef(np.dot(in_signal.T, Wx_X_X_hatf[:, 0]), np.dot(X_hatf.T, W_X_hatf_X_hatf[:, 0]))[0, 1]
+
+        # Calculate weighted correlation coefficients
+        result[f] = (np.sign(p1) * p1 ** 2 + np.sign(p2) * p2 ** 2 + np.sign(p3) * p3 ** 2 + np.sign(p4) * p4 ** 2)
+
+    # Identify the frequency with the maximum coefficient
+    predicted = np.argmax(result) + 1
+    return predicted
+
+
+
+# # Example usage
+# Freq_phase_path = './data/raw/Freq_Phase.mat'
+# freqs = [10, 12, 14, 8.2]
+# N = 1024
+# n_harmonics = 3
+# fs = 250
+# ref_signals = generate_ref_signal(Freq_phase_path, freqs, N, n_harmonics, fs)
+
+# # Assuming template_signals is precomputed and a    vailable
+# template_signals = np.random.rand(6, N)  # Example template signals
+
+# in_signal = np.random.rand(3, 1024)  # Example input signal
+# n_subbands = 6
+# filter_bank_design = 'M1'
+# lowest_freq = 2
+# upmost_freq = 54
+
+# predicted = combined_cca(in_signal, fs, n_subbands, filter_bank_design, ref_signals, template_signals, lowest_freq, upmost_freq)
+# print("Predicted frequency:", predicted)

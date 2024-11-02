@@ -192,3 +192,39 @@ If you find this work useful for your research, please cite our paper:
 
 ## Acknowledgements
 We would like to thank the full-time and visiting Clova AI Research (now NAVER AI Lab) members for their valuable feedback and an early review: especially Seongjoon Oh, Junsuk Choe, Muhammad Ferjad Naeem, and Kyungjune Baek. We also thank Alias-Free GAN authors for their contribution to the updated AFHQ dataset.
+
+
+
+### Notas:
+
++ Mejorar diapos con screenshots
+
++ Curvas de entrenamiento
+
++ Generar 1 curva mas `(usando Latent guided synthesis)`
+
++ **windows = 0.1, 0.2 , 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9 hasta 1.0 segundo, tambien 2 segundos y 4 segundos**
+
++ Repetir experimentos con el **Combined-ECCA** y sin el combined
+
++ Repetir experimiento con 4, 8, 16 clases  y 40 (frecuencias).
+
++ Usar un padding de 140 ms al inicio (descargar por visual latency)
+
+
+> informacion del dataset (Benchmark)
+
+```python
+ 'phases': array([[0.        , 1.57079633, 3.14159265, 4.71238898, 0.        ,
+         1.57079633, 3.14159265, 4.71238898, 1.57079633, 3.14159265,
+         4.71238898, 0.        , 1.57079633, 3.14159265, 4.71238898,
+         0.        , 3.14159265, 4.71238898, 0.        , 1.57079633,
+         3.14159265, 4.71238898, 0.        , 1.57079633, 4.71238898,
+         0.        , 1.57079633, 3.14159265, 4.71238898, 0.        ,
+         1.57079633, 3.14159265, 0.        , 1.57079633, 3.14159265,
+         4.71238898, 0.        , 1.57079633, 3.14159265, 4.71238898]]),
+ 'freqs': array([[ 8. ,  9. , 10. , 11. , 12. , 13. , 14. , 15. ,  8.2,  9.2, 10.2,
+         11.2, 12.2, 13.2, 14.2, 15.2,  8.4,  9.4, 10.4, 11.4, 12.4, 13.4,
+         14.4, 15.4,  8.6,  9.6, 10.6, 11.6, 12.6, 13.6, 14.6, 15.6,  8.8,
+          9.8, 10.8, 11.8, 12.8, 13.8, 14.8, 15.8]])}
+```
