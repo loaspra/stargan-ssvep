@@ -197,19 +197,23 @@ We would like to thank the full-time and visiting Clova AI Research (now NAVER A
 
 ### Notas:
 
-+ Mejorar diapos con screenshots
++ Mejorar diapos con screenshots✅
 
-+ Curvas de entrenamiento
++ Curvas de entrenamiento✅
 
-+ Generar 1 curva mas `(usando Latent guided synthesis)`
++ Generar 1 curva mas `(usando Latent guided synthesis)` ❌
 
-+ **windows = 0.1, 0.2 , 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9 hasta 1.0 segundo, tambien 2 segundos y 4 segundos**
++ **windows = 0.1, 0.2 , 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9 hasta 1.0 segundo, tambien 2 segundos y 4 segundos**✅
 
-+ Repetir experimentos con el **Combined-ECCA** y sin el combined
++ Repetir experimentos con el **Combined-ECCA** y sin el combined !! ❌ 
 
-+ Repetir experimiento con 4, 8, 16 clases  y 40 (frecuencias).
++ Repetir experimiento con 4, 8, 16 clases  y 40 (frecuencias). !! ❌
 
-+ Usar un padding de 140 ms al inicio (descargar por visual latency)
++ Usar un padding de 140 ms al inicio (descargar por visual latency)✅
+
++ Hacer un resumen + presentacion sobre el nuevo paper (EEG-Deformer) ! 
+
++ Analizar a fondo las curvas de entrenamiento (losses) !
 
 
 > informacion del dataset (Benchmark)

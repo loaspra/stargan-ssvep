@@ -1,0 +1,11 @@
+Samples,Accuracy,Data,Std,Window
+1,0.68,Real,0.03,2s
+2,0.725,Real,0.02,2s
+3,0.71,Real,0.03,2s
+4,0.712,Real,0.019,2s
+5,0.725,Real,0.023,2s
+1,0.583,Synthetic,0.032,2s
+2,0.625,Synthetic,0.02,2s
+3,0.62,Synthetic,0.03,2s
+4,0.66,Synthetic,0.019,2s
+5,0.66,Synthetic,0.019,2s

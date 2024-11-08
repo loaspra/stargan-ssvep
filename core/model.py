@@ -18,7 +18,64 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-# from core.wing import FAN
+"""
+A hierarchical model that combines coarse-grained temporal dynamics with fine-grained temporal learning.
+Args:
+    d_model (int): The number of expected features in the input (required by the Transformer).
+    nhead (int): The number of heads in the multiheadattention models (required by the Transformer).
+    num_layers (int): The number of encoder layers in the Transformer.
+    cnn_in_channels (int): Number of channels in the input image (required by the FineGrainedTemporalLearning module).
+    cnn_out_channels (int): Number of channels produced by the convolution (required by the FineGrainedTemporalLearning module).
+    cnn_kernel_size (int or tuple): Size of the convolving kernel (required by the FineGrainedTemporalLearning module).
+Methods:
+    forward(x):
+        Forward pass through the hierarchical model.
+        Args:
+            x (Tensor): Input tensor of shape (sequence_length, batch_size, d_model).
+        Returns:
+            Tensor: Output tensor after fusion of coarse and fine-grained temporal features.
+"""
+class FineGrainedTemporalLearning(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size):
+        super(FineGrainedTemporalLearning, self).__init__()
+        self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size)
+        self.batch_norm = nn.BatchNorm1d(out_channels)
+        self.elu = nn.ELU()
+        self.max_pool = nn.MaxPool1d(kernel_size=2)
+
+    def forward(self, x):
+        x = self.conv1d(x)
+        x = self.batch_norm(x)
+        x = self.elu(x)
+        x = self.max_pool(x)
+        return x
+
+class HierarchicalCoarseToFineTransformer(nn.Module):
+    def __init__(self, d_model, nhead, num_layers, cnn_in_channels, cnn_out_channels, cnn_kernel_size):
+        super(HierarchicalCoarseToFineTransformer, self).__init__()
+        self.transformer = nn.Transformer(d_model=d_model, nhead=nhead, num_encoder_layers=num_layers)
+        self.ftl = FineGrainedTemporalLearning(cnn_in_channels, cnn_out_channels, cnn_kernel_size)
+
+    def forward(self, x):
+        # Coarse-grained temporal dynamics
+        x_coarse = self.transformer(x)
+        
+        # Fine-grained temporal learning
+        x_fine = self.ftl(x)
+        
+        # Fusion
+        x_fused = x_coarse + x_fine
+        return x_fused
+
+class InformationPurificationUnit(nn.Module):
+    def __init__(self):
+        super(InformationPurificationUnit, self).__init__()
+
+    def forward(self, x):
+        # Logarithmic power operation
+        x_power = torch.log1p(torch.mean(x**2, dim=-1))
+        return x_power
+
 
 """
 ResBLock: 
@@ -210,7 +267,7 @@ class HighPass(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self, img_size=256, style_dim=64, max_conv_dim=512, w_hpf=1):
+    def __init__(self, img_size=256, style_dim=64, max_conv_dim=512, w_hpf=1, new_k_size=3):
         super().__init__()
         dim_in = 2 ** 14 // img_size
         self.img_size = img_size
@@ -221,6 +278,9 @@ class Generator(nn.Module):
             nn.InstanceNorm1d(dim_in, affine=True),
             nn.LeakyReLU(0.2),
             nn.Conv1d(dim_in, 3, 1, 1, 0))
+        
+        # Addition
+        self.fine_grained_temporal = FineGrainedTemporalLearning(img_size, dim_in, new_k_size)
         
         # down/up-sampling blocks
         repeat_num = int(np.log2(img_size)) - 4
@@ -249,6 +309,7 @@ class Generator(nn.Module):
 
     def forward(self, x, s, masks=None):
         x = self.from_rgb(x)
+        # x = self.fine_grained_temporal(x)
         cache = {}
         for block in self.encode:
             if (masks is not None) and (x.size(2) in [32, 64, 128]):

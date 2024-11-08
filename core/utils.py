@@ -73,7 +73,8 @@ def get_FFT(x):
 def save_image(x, ncol, filename):
     # print([item.shape for item in x])
     x = [item.cpu() for item in x]
-    np.save(filename + f"_b", x)
+    print(f"Length: x{len(x)}x and Shape of x: {x[0].shape} | {x[1].shape}")
+    np.save(filename + f"_w_4s", x)
     # ss = int(np.ceil(np.sqrt(len(x))))
 
     # fig, axs = plt.subplots(ss, ss, figsize=(10, 10))
@@ -109,18 +110,22 @@ def translate_and_reconstruct(nets, args, x_src, y_src, x_ref, y_ref, filename):
     s_src = nets.style_encoder(x_src, y_src)
     masks = nets.fan.get_heatmap(x_fake) if args.w_hpf > 0 else None
     x_rec = nets.generator(x_fake, s_src, masks=masks)
+    print(f"Shape of x_src: {x_src.shape}, x_ref: {x_ref.shape}, x_fake: {x_fake.shape}, x_rec: {x_rec.shape}")
     x_concat = [x_src, x_ref, x_fake, x_rec]
+    print(f"Shape of x_concat: {len(x_concat)}")
     x_concat = torch.cat(x_concat, dim=0)
+    print(f"(2) Shape of x_concat: {len(x_concat)}")
     save_image(x_concat, N, filename)
     del x_concat
 
 
 @torch.no_grad()
 def translate_using_latent(nets, args, x_src, y_trg_list, z_trg_list, psi, filename):
+    print(f"Received x_src with shape: {x_src.shape}")
     N, _, _ = x_src.size()
     latent_dim = z_trg_list[0].size(1)
     x_concat = [x_src]
-    masks = nets.fan.get_heatmap(x_src) if args.w_hpf > 0 else None
+    # masks = nets.fan.get_heatmap(x_src) if args.w_hpf > 0 else None
 
     for i, y_trg in enumerate(y_trg_list):
         z_many = torch.randn(10000, latent_dim).to(x_src.device)
@@ -131,8 +136,8 @@ def translate_using_latent(nets, args, x_src, y_trg_list, z_trg_list, psi, filen
 
         for z_trg in z_trg_list:
             s_trg = nets.mapping_network(z_trg, y_trg)
-            s_trg = torch.lerp(s_avg, s_trg, psi)
-            x_fake = nets.generator(x_src, s_trg, masks=masks)
+            s_trg = torch.lerp(s_avg, s_trg, psi) # Q: What is torch.lerp, A: Linear interpolation
+            x_fake = nets.generator(x_src, s_trg)
             x_concat += [x_fake]
 
     x_concat = torch.cat(x_concat, dim=0)
@@ -149,9 +154,11 @@ def translate_using_reference(nets, args, x_src, x_ref, y_ref, filename):
     masks = nets.fan.get_heatmap(x_src) if args.w_hpf > 0 else None
     s_ref = nets.style_encoder(x_ref, y_ref)
 
-    # print(f"Shape of reference image: {x_ref.shape}")
+    print(f"Shape of reference image: {x_ref.shape}")
     # # Label
-    # print(f"Shape of reference label: {y_ref.shape}, value: {y_ref}")
+    print(f"Shape of reference label: {y_ref.shape}, value: {y_ref}")
+    # # S_ref   
+    print(f"Shape of reference style: {s_ref.shape}")
 
     # make_dot(nets.style_encoder(x_ref, y_ref)).render("style_encoder", format="png")
     
@@ -162,10 +169,27 @@ def translate_using_reference(nets, args, x_src, x_ref, y_ref, filename):
 
     x_concat = [x_src_with_wb]
     for i, s_ref in enumerate(s_ref_list):
-        
+        print(f"GEnerating with s_ref {s_ref.shape}")
         x_fake = nets.generator(x_src, s_ref, masks=masks)
+        print(f"Shape of x_fake: {x_fake.shape}")
+        x_fake_tp = x_fake.reshape((3, 1024))
+        for j in range(x_fake_tp.shape[0]):
+            print(f"Generating PSD for channel {j+1}")
+            sample = x_fake_tp[j].cpu().numpy()
+            freqs, psd = signal.welch(sample, fs=250)
+            psd[psd < 0] = 0
+            plt.figure(figsize=(12, 6))
+            plt.stem(freqs, psd)
+            plt.xlabel('Frequency (Hz)')
+            plt.ylabel('Power/Frequency (dB/Hz)')
+            plt.title(f'Power Spectral Density of EEG Signal - Channel {j+1}')
+            plt.xlim(0, 50)
+            plt.savefig(f"{filename}_channel_{j+1}_psd.png")
+            plt.close()
         x_fake_with_ref = torch.cat([x_ref[i:i+1], x_fake], dim=0)
+        print(f"Shape of x_fake_with_ref: {x_fake_with_ref.shape}")
         x_concat += [x_fake_with_ref]
+        print(f"Lenght of x_concat: {len(x_concat)}")
         
     print(f"saving into {filename + '_%02d' % i}")  
     save_image(x_concat, N+1, filename + '_%02d' % i)
@@ -188,7 +212,9 @@ def debug_image(nets, args, inputs, step):
     # latent-guided image synthesis
     y_trg_list = [torch.tensor(y).repeat(N).to(device)
                   for y in range(min(args.num_domains, 5))]
+    print(f"DEBUG y_trg_list: {y_trg_list}")
     z_trg_list = torch.randn(args.num_outs_per_domain, 1, args.latent_dim).repeat(1, N, 1).to(device)
+    print(f"DEBUG z_trg_list: {z_trg_list}")
     for psi in [0.5, 0.7, 1.0]:
         filename = ospj(args.sample_dir, '%06d_latent_psi_%.1f.jpg' % (step, psi))
         translate_using_latent(nets, args, x_src, y_trg_list, z_trg_list, psi, filename)
