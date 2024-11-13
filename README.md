@@ -205,7 +205,7 @@ We would like to thank the full-time and visiting Clova AI Research (now NAVER A
 
 + **windows = 0.1, 0.2 , 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9 hasta 1.0 segundo, tambien 2 segundos y 4 segundos**✅
 
-+ Repetir experimentos con el **Combined-ECCA** y sin el combined !! ❌ 
++ Repetir experimentos con el **Combined-ECCA** y sin el combined !! ✅ 
 
 + Repetir experimiento con 4, 8, 16 clases  y 40 (frecuencias). !! ❌
 

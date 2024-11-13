@@ -198,9 +198,7 @@ class Solver(nn.Module):
             # latent-guided image synthesis
         y_trg_list = [torch.tensor(y).repeat(N).to(device)
                     for y in range(min(args.num_domains, 5))]
-        print(f"DEBUG Shape of y_trg_list: {y_trg_list[0]}")
         z_trg_list = torch.randn(args.num_outs_per_domain, 1, args.latent_dim).repeat(1, N, 1).to(device)
-        print(f"DEBUG Shape of z_trg_list: {z_trg_list.shape}")
         for psi in [0.5, 0.7, 1.0]:
             filename = ospj(args.sample_dir, 'latent_psi_%.1f.jpg' % (psi))
             utils.translate_using_latent(nets_ema, args, src.x, y_trg_list, z_trg_list, psi, filename)

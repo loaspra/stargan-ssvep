@@ -408,7 +408,7 @@ def align_faces(args, input_dir, output_dir):
     import os
     from torchvision import transforms
     from PIL import Image
-    from core.utils import save_image
+    from core.utils import save_signal
 
     aligner = FaceAligner(args.wing_path, args.lm_path, args.img_size)
     transform = transforms.Compose([
@@ -425,7 +425,7 @@ def align_faces(args, input_dir, output_dir):
         image = Image.open(os.path.join(input_dir, fname)).convert('RGB')
         x = transform(image).unsqueeze(0)
         x_aligned = aligner.align(x)
-        save_image(x_aligned, 1, filename=os.path.join(output_dir, fname))
+        save_signal(x_aligned, 1, filename=os.path.join(output_dir, fname))
         print('Saved the aligned image to %s...' % fname)
 
 

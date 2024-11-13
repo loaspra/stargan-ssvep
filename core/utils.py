@@ -70,10 +70,10 @@ def get_FFT(x):
     freqs = np.fft.fftfreq(len(x)) * 250
     return fft, freqs
 
-def save_image(x, ncol, filename):
+def save_signal(x, ncol, filename):
     # print([item.shape for item in x])
     x = [item.cpu() for item in x]
-    print(f"Length: x{len(x)}x and Shape of x: {x[0].shape} | {x[1].shape}")
+    # print(f"Length: x{len(x)}x and Shape of x: {x[0].shape} | {x[1].shape}")
     np.save(filename + f"_w_4s", x)
     # ss = int(np.ceil(np.sqrt(len(x))))
 
@@ -115,17 +115,15 @@ def translate_and_reconstruct(nets, args, x_src, y_src, x_ref, y_ref, filename):
     print(f"Shape of x_concat: {len(x_concat)}")
     x_concat = torch.cat(x_concat, dim=0)
     print(f"(2) Shape of x_concat: {len(x_concat)}")
-    save_image(x_concat, N, filename)
+    save_signal(x_concat, N, filename)
     del x_concat
 
 
 @torch.no_grad()
 def translate_using_latent(nets, args, x_src, y_trg_list, z_trg_list, psi, filename):
-    print(f"Received x_src with shape: {x_src.shape}")
-    N, _, _ = x_src.size()
+    print(f"Translating using latent with x_src shape: {x_src.shape}")
+    N, n_channels, n_samples = x_src.size()
     latent_dim = z_trg_list[0].size(1)
-    x_concat = [x_src]
-    # masks = nets.fan.get_heatmap(x_src) if args.w_hpf > 0 else None
 
     for i, y_trg in enumerate(y_trg_list):
         z_many = torch.randn(10000, latent_dim).to(x_src.device)
@@ -134,19 +132,37 @@ def translate_using_latent(nets, args, x_src, y_trg_list, z_trg_list, psi, filen
         s_avg = torch.mean(s_many, dim=0, keepdim=True)
         s_avg = s_avg.repeat(N, 1)
 
-        for z_trg in z_trg_list:
+        fig, axes = plt.subplots(1, len(z_trg_list), figsize=(5 * len(z_trg_list), 5))
+
+        for j, z_trg in enumerate(z_trg_list):
             s_trg = nets.mapping_network(z_trg, y_trg)
-            s_trg = torch.lerp(s_avg, s_trg, psi) # Q: What is torch.lerp, A: Linear interpolation
+            s_trg = torch.lerp(s_avg, s_trg, psi)
             x_fake = nets.generator(x_src, s_trg)
-            x_concat += [x_fake]
+            x_fake_tp = x_fake[0].reshape((n_channels, n_samples))
 
-    x_concat = torch.cat(x_concat, dim=0)
-    save_image(x_concat, N, filename)
+            colors = ['r', 'g', 'b']
+            for k in range(n_channels):
+                sample = x_fake_tp[k].cpu().numpy()
+                freqs, psd = signal.welch(sample, fs=250, nperseg=250)
+                psd = np.maximum(psd, 0)
+                axes[j].stem(freqs, psd, label=f'Channel {k+1}', linefmt=colors[k],
+                             markerfmt=colors[k]+'o', basefmt=" ")
 
+            axes[j].set_xlabel('Frequency (Hz)')
+            axes[j].set_ylabel('Power/Frequency (dB/Hz)')
+            axes[j].set_title(f'Target Label {y_trg[0].item()}')
+            axes[j].set_xlim(0, 32)
+            axes[j].xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+            axes[j].legend()
+
+        plt.tight_layout()
+        print(f"Saving latent into {filename}_latent_{i}.png")
+        plt.savefig(f'{filename}_latent_{i}.png')
+        plt.close()
 
 @torch.no_grad()
 def translate_using_reference(nets, args, x_src, x_ref, y_ref, filename):
-    # print(f"Shape of source image: {x_src.shape}")
+    print(f"Translating using reference with x_src shape: {x_src.shape}")
     N, C, H = x_src.size()
     wb = torch.ones(1, C, H).to(x_src.device)
     x_src_with_wb = torch.cat([wb, x_src], dim=0)
@@ -154,45 +170,41 @@ def translate_using_reference(nets, args, x_src, x_ref, y_ref, filename):
     masks = nets.fan.get_heatmap(x_src) if args.w_hpf > 0 else None
     s_ref = nets.style_encoder(x_ref, y_ref)
 
-    print(f"Shape of reference image: {x_ref.shape}")
-    # # Label
-    print(f"Shape of reference label: {y_ref.shape}, value: {y_ref}")
-    # # S_ref   
-    print(f"Shape of reference style: {s_ref.shape}")
-
-    # make_dot(nets.style_encoder(x_ref, y_ref)).render("style_encoder", format="png")
+    print(f"Labels: {y_ref}")
     
     s_ref_list = s_ref.unsqueeze(1).repeat(1, N, 1)
-    print(f"Shape of reference style: {s_ref_list.shape}")
-
-    # print(f"Into de torch: {x_ref.shape} ==> {x_ref}")
+    num_refs = s_ref_list.shape[0]
+    fig, axes = plt.subplots(1, num_refs, figsize=(6 * num_refs, 6))
 
     x_concat = [x_src_with_wb]
     for i, s_ref in enumerate(s_ref_list):
-        print(f"GEnerating with s_ref {s_ref.shape}")
         x_fake = nets.generator(x_src, s_ref, masks=masks)
-        print(f"Shape of x_fake: {x_fake.shape}")
-        x_fake_tp = x_fake.reshape((3, 1024))
-        for j in range(x_fake_tp.shape[0]):
-            print(f"Generating PSD for channel {j+1}")
+        batch_size, n_channels, n_samples = x_fake.shape
+
+        # Reshape x_fake to (n_channels, n_samples)
+        x_fake_tp = x_fake[0].reshape((n_channels, n_samples))
+        colors = ['r', 'g', 'b']
+
+        for j in range(n_channels):
             sample = x_fake_tp[j].cpu().numpy()
-            freqs, psd = signal.welch(sample, fs=250)
+            freqs, psd = signal.welch(sample, fs=250, nperseg=250)
             psd[psd < 0] = 0
-            plt.figure(figsize=(12, 6))
-            plt.stem(freqs, psd)
-            plt.xlabel('Frequency (Hz)')
-            plt.ylabel('Power/Frequency (dB/Hz)')
-            plt.title(f'Power Spectral Density of EEG Signal - Channel {j+1}')
-            plt.xlim(0, 50)
-            plt.savefig(f"{filename}_channel_{j+1}_psd.png")
-            plt.close()
-        x_fake_with_ref = torch.cat([x_ref[i:i+1], x_fake], dim=0)
-        print(f"Shape of x_fake_with_ref: {x_fake_with_ref.shape}")
-        x_concat += [x_fake_with_ref]
-        print(f"Lenght of x_concat: {len(x_concat)}")
-        
+            axes[i].stem(freqs, psd, label=f'Channel {j+1}', linefmt=colors[j], 
+                        markerfmt=colors[j]+'o', basefmt=" ")
+
+        axes[i].set_xlabel('Frequency (Hz)')
+        axes[i].set_ylabel('Power/Frequency (dB/Hz)')
+        axes[i].set_title(f'Target Label {y_ref[i].item()}')
+        axes[i].set_xlim(0, 32)
+        axes[i].xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+        axes[i].legend()
+
+    plt.tight_layout()
+    print(f"Saving into {filename}.png")
+    plt.savefig(f'{filename}.png')
+    plt.close()        
     print(f"saving into {filename + '_%02d' % i}")  
-    save_image(x_concat, N+1, filename + '_%02d' % i)
+    save_signal(x_concat, N+1, filename + '_%02d' % i)
 
     del x_concat
 
